@@ -424,7 +424,7 @@ const PhotoGallery = ({ photos = [], thumb = 80 }) => {
 
 // Export to globals
 Object.assign(window, {
-  Icon, Modal, Field, StatusTag, KPI, Card, ChartBox, chartDefaults, AreaBadge,
+  Icon, Modal, Field, StatusTag, DetailField, KPI, Card, ChartBox, chartDefaults, AreaBadge,
   toast, confirmDialog, SearchInput, Empty,
   today, nowTime, fmtDate, daysBetween,
   STATUS_COLORS, URGENCY_COLORS, AREAS,
