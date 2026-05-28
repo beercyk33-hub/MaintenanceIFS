@@ -27,6 +27,12 @@ function PageDashboard({ db, setDb, nav }) {
     return <DashboardDetailList type={detailView} db={db} onBack={() => setDetailView(null)} />;
   }
 
+  const machinesByArea = React.useMemo(() => {
+    const m = {};
+    for (const x of machines) m[x.area] = (m[x.area] || 0) + 1;
+    return m;
+  }, [machines]);
+
   const statusChart = {
     labels: ['รอรับงาน', 'กำลังดำเนินการ', 'รออะไหล่', 'ซ่อมเสร็จ', 'ยกเลิก'],
     datasets: [{
@@ -184,13 +190,16 @@ function PageDashboard({ db, setDb, nav }) {
 }
 
 function DashboardDetailList({ type, db, onBack }) {
+  console.log('DashboardDetailList:', { type, dbMachines: db.machines?.length, dbRequests: db.repairRequests?.length, dbPmPlans: db.pmPlans?.length });
+
   let data = [];
   let title = '';
   let columns = [];
 
   if (type === 'machines') {
-    data = db.machines;
+    data = db.machines || [];
     title = 'เครื่องจักรทั้งหมด';
+    console.log('machines data:', data.length);
     columns = [
       { label: 'รหัส', key: 'id' },
       { label: 'ชื่อ', key: 'name' },
@@ -266,6 +275,9 @@ function DashboardDetailList({ type, db, onBack }) {
 
       {/* Scrollable Content */}
       <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
+        <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.75rem', fontSize: '0.85rem', color: 'var(--ink-dim)' }}>
+          พบ {data.length} รายการ
+        </div>
         <Card padding={false}>
           {data.length === 0 ? (
             <div className="p-5"><Empty icon="search" title="ไม่มีข้อมูล" /></div>
