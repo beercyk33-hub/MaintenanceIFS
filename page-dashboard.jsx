@@ -192,109 +192,118 @@ function DashboardDetailList({ type, db, onBack }) {
     data = db.machines;
     title = 'เครื่องจักรทั้งหมด';
     columns = [
-      { label: 'รหัส', key: 'id', width: '100px' },
-      { label: 'ชื่อ', key: 'name', width: '200px' },
-      { label: 'พื้นที่', key: 'area', width: '100px' },
-      { label: 'สถานะ', key: 'status', width: '120px' },
+      { label: 'รหัส', key: 'id' },
+      { label: 'ชื่อ', key: 'name' },
+      { label: 'พื้นที่', key: 'area' },
+      { label: 'สถานะ', key: 'status' },
     ];
   } else if (type === 'all-requests') {
     data = db.repairRequests;
     title = 'งานแจ้งซ่อมทั้งหมด';
     columns = [
-      { label: 'ใบงาน', key: 'id', width: '100px' },
-      { label: 'เครื่องจักร', key: 'machineId', width: '100px' },
-      { label: 'วันที่', key: 'date', width: '100px' },
-      { label: 'อาการ', key: 'symptom', width: '250px' },
-      { label: 'สถานะ', key: 'status', width: '120px' },
+      { label: 'ใบงาน', key: 'id' },
+      { label: 'เครื่องจักร', key: 'machineId' },
+      { label: 'วันที่', key: 'date' },
+      { label: 'อาการ', key: 'symptom' },
+      { label: 'สถานะ', key: 'status' },
     ];
   } else if (type === 'wait') {
     data = db.repairRequests.filter(r => r.status === 'รอรับงาน');
     title = 'งานแจ้งซ่อม - รอดำเนินการ';
     columns = [
-      { label: 'ใบงาน', key: 'id', width: '100px' },
-      { label: 'เครื่องจักร', key: 'machineId', width: '100px' },
-      { label: 'วันที่', key: 'date', width: '100px' },
-      { label: 'อาการ', key: 'symptom', width: '250px' },
+      { label: 'ใบงาน', key: 'id' },
+      { label: 'เครื่องจักร', key: 'machineId' },
+      { label: 'วันที่', key: 'date' },
+      { label: 'อาการ', key: 'symptom' },
     ];
   } else if (type === 'doing') {
     data = db.repairRequests.filter(r => r.status === 'กำลังดำเนินการ');
     title = 'งานแจ้งซ่อม - กำลังซ่อม';
     columns = [
-      { label: 'ใบงาน', key: 'id', width: '100px' },
-      { label: 'เครื่องจักร', key: 'machineId', width: '100px' },
-      { label: 'วันที่', key: 'date', width: '100px' },
-      { label: 'อาการ', key: 'symptom', width: '250px' },
+      { label: 'ใบงาน', key: 'id' },
+      { label: 'เครื่องจักร', key: 'machineId' },
+      { label: 'วันที่', key: 'date' },
+      { label: 'อาการ', key: 'symptom' },
     ];
   } else if (type === 'done') {
     data = db.repairRequests.filter(r => r.status === 'ซ่อมเสร็จ');
     title = 'งานแจ้งซ่อม - ซ่อมเสร็จแล้ว';
     columns = [
-      { label: 'ใบงาน', key: 'id', width: '100px' },
-      { label: 'เครื่องจักร', key: 'machineId', width: '100px' },
-      { label: 'วันที่', key: 'date', width: '100px' },
-      { label: 'อาการ', key: 'symptom', width: '250px' },
+      { label: 'ใบงาน', key: 'id' },
+      { label: 'เครื่องจักร', key: 'machineId' },
+      { label: 'วันที่', key: 'date' },
+      { label: 'อาการ', key: 'symptom' },
     ];
   } else if (type === 'pm-due') {
     const t = today();
     data = db.pmPlans.filter(p => p.nextDate && p.nextDate <= t);
     title = 'PM ถึงกำหนด';
     columns = [
-      { label: 'เครื่องจักร', key: 'machineId', width: '100px' },
-      { label: 'รายการ', key: 'item', width: '200px' },
-      { label: 'ความถี่', key: 'frequency', width: '100px' },
-      { label: 'ครั้งถัดไป', key: 'nextDate', width: '100px' },
+      { label: 'เครื่องจักร', key: 'machineId' },
+      { label: 'รายการ', key: 'item' },
+      { label: 'ความถี่', key: 'frequency' },
+      { label: 'ครั้งถัดไป', key: 'nextDate' },
     ];
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <button onClick={onBack}
-                className="btn btn-ghost btn-sm flex items-center gap-1.5"
-                title="กลับไป">
-          <Icon name="close" size={16} />
-          <span>กลับ</span>
-        </button>
-        <h1 className="h2">{title}</h1>
-        <span className="tag">{data.length} รายการ</span>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, #02040d 0%, #050a23 18%, #061640 38%, #053b75 65%, #0a73b8 100%)' }}>
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10" style={{ background: 'rgba(8, 16, 44, 0.95)', borderBottom: '1px solid var(--line)', backdropFilter: 'blur(10px)' }}>
+        <div className="px-4 py-3 flex items-center gap-3">
+          <button onClick={onBack}
+                  className="btn btn-ghost btn-sm flex items-center gap-1.5 flex-shrink-0"
+                  title="กลับไป">
+            <Icon name="close" size={18} />
+            <span>กลับ</span>
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="h3 truncate">{title}</div>
+            <div className="text-xs" style={{ color: 'var(--ink-dim)' }}>{data.length} รายการ</div>
+          </div>
+        </div>
       </div>
 
-      <Card padding={false}>
-        {data.length === 0 ? (
-          <div className="p-5"><Empty icon="search" title="ไม่มีข้อมูล" /></div>
-        ) : (
-          <div className="tbl-wrap">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  {columns.map(col => (
-                    <th key={col.key}>{col.label}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((row, idx) => (
-                  <tr key={idx}>
+      {/* Scrollable Content */}
+      <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
+        <Card padding={false}>
+          {data.length === 0 ? (
+            <div className="p-5"><Empty icon="search" title="ไม่มีข้อมูล" /></div>
+          ) : (
+            <div className="tbl-wrap">
+              <table className="tbl">
+                <thead>
+                  <tr>
                     {columns.map(col => (
-                      <td key={col.key}>
-                        {col.key === 'status' ? (
-                          <StatusTag value={row[col.key]} />
-                        ) : col.key === 'date' ? (
-                          <span className="num">{fmtDate(row[col.key])}</span>
-                        ) : col.key === 'nextDate' ? (
-                          <span className="num">{fmtDate(row[col.key])}</span>
-                        ) : (
-                          row[col.key] || '-'
-                        )}
-                      </td>
+                      <th key={col.key}>{col.label}</th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+                </thead>
+                <tbody>
+                  {data.map((row, idx) => (
+                    <tr key={idx}>
+                      {columns.map(col => (
+                        <td key={col.key}>
+                          {col.key === 'status' ? (
+                            <StatusTag value={row[col.key]} />
+                          ) : col.key === 'date' ? (
+                            <span className="num">{fmtDate(row[col.key])}</span>
+                          ) : col.key === 'nextDate' ? (
+                            <span className="num">{fmtDate(row[col.key])}</span>
+                          ) : (
+                            row[col.key] || '-'
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+        <div style={{ height: 20 }} />
+      </div>
     </div>
   );
 }
