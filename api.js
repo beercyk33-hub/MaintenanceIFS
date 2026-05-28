@@ -155,9 +155,9 @@
     const statuses = ['รอรับงาน', 'กำลังดำเนินการ', 'รออะไหล่', 'ซ่อมเสร็จ', 'ซ่อมเสร็จ'];
     const reporters = ['คุณสมศักดิ์', 'คุณวิภา', 'คุณธีรพงษ์', 'คุณกุลธิดา', 'คุณเอกชัย'];
     // Create repairs spread across all machines to cover all areas
-    return Array.from({ length: 16 }, (_, i) => {
-      // Distribute repairs across machines to ensure multiple areas are represented
-      const machineIndex = Math.floor((i * machines.length) / 16);
+    return Array.from({ length: 20 }, (_, i) => {
+      // Distribute repairs across machines to ensure all areas are represented
+      const machineIndex = Math.floor((i * machines.length) / 20);
       const m = machines[machineIndex] || pick(i);
       return {
         id: 'RR-' + String(1000 + i),
