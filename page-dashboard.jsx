@@ -1,5 +1,7 @@
 // Dashboard page
 function PageDashboard({ db, setDb, nav }) {
+  const [detailView, setDetailView] = React.useState(null); // null | 'machines' | 'all-requests' | 'wait' | 'doing' | 'done' | 'pm-due'
+
   const machines = db.machines;
   const requests = db.repairRequests;
   const pmPlans = db.pmPlans;
@@ -20,6 +22,10 @@ function PageDashboard({ db, setDb, nav }) {
     const t = today();
     return pmPlans.filter(p => p.nextDate && p.nextDate <= t).length;
   }, [pmPlans]);
+
+  if (detailView) {
+    return <DashboardDetailList type={detailView} db={db} onBack={() => setDetailView(null)} />;
+  }
 
   const statusChart = {
     labels: ['รอรับงาน', 'กำลังดำเนินการ', 'รออะไหล่', 'ซ่อมเสร็จ', 'ยกเลิก'],
@@ -67,12 +73,24 @@ function PageDashboard({ db, setDb, nav }) {
     <div className="flex flex-col gap-4">
       {/* KPI row */}
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-        <KPI label="เครื่องจักรทั้งหมด"   value={machines.length}    icon="machine"  color="#38e0ff" sub={Object.keys(machinesByArea).length + ' พื้นที่'} />
-        <KPI label="งานแจ้งซ่อมทั้งหมด"   value={counts.total}       icon="wrench"   color="#6c8cff" />
-        <KPI label="รอดำเนินการ"          value={counts.wait}        icon="bell"     color="#ffc04b" />
-        <KPI label="กำลังซ่อม"            value={counts.doing}       icon="bolt"     color="#6cb8ff" />
-        <KPI label="ซ่อมเสร็จแล้ว"        value={counts.done}        icon="check"    color="#34e3a5" />
-        <KPI label="PM ถึงกำหนด"         value={pmDue}              icon="calendar" color="#ff9ec7" />
+        <div onClick={() => setDetailView('machines')} style={{ cursor: 'pointer' }}>
+          <KPI label="เครื่องจักรทั้งหมด"   value={machines.length}    icon="machine"  color="#38e0ff" sub={Object.keys(machinesByArea).length + ' พื้นที่'} />
+        </div>
+        <div onClick={() => setDetailView('all-requests')} style={{ cursor: 'pointer' }}>
+          <KPI label="งานแจ้งซ่อมทั้งหมด"   value={counts.total}       icon="wrench"   color="#6c8cff" />
+        </div>
+        <div onClick={() => setDetailView('wait')} style={{ cursor: 'pointer' }}>
+          <KPI label="รอดำเนินการ"          value={counts.wait}        icon="bell"     color="#ffc04b" />
+        </div>
+        <div onClick={() => setDetailView('doing')} style={{ cursor: 'pointer' }}>
+          <KPI label="กำลังซ่อม"            value={counts.doing}       icon="bolt"     color="#6cb8ff" />
+        </div>
+        <div onClick={() => setDetailView('done')} style={{ cursor: 'pointer' }}>
+          <KPI label="ซ่อมเสร็จแล้ว"        value={counts.done}        icon="check"    color="#34e3a5" />
+        </div>
+        <div onClick={() => setDetailView('pm-due')} style={{ cursor: 'pointer' }}>
+          <KPI label="PM ถึงกำหนด"         value={pmDue}              icon="calendar" color="#ff9ec7" />
+        </div>
       </div>
 
       {/* Charts */}
@@ -161,6 +179,122 @@ function PageDashboard({ db, setDb, nav }) {
           <TechnicianCard db={db} setDb={setDb} />
         </div>
       </div>
+    </div>
+  );
+}
+
+function DashboardDetailList({ type, db, onBack }) {
+  let data = [];
+  let title = '';
+  let columns = [];
+
+  if (type === 'machines') {
+    data = db.machines;
+    title = 'เครื่องจักรทั้งหมด';
+    columns = [
+      { label: 'รหัส', key: 'id', width: '100px' },
+      { label: 'ชื่อ', key: 'name', width: '200px' },
+      { label: 'พื้นที่', key: 'area', width: '100px' },
+      { label: 'สถานะ', key: 'status', width: '120px' },
+    ];
+  } else if (type === 'all-requests') {
+    data = db.repairRequests;
+    title = 'งานแจ้งซ่อมทั้งหมด';
+    columns = [
+      { label: 'ใบงาน', key: 'id', width: '100px' },
+      { label: 'เครื่องจักร', key: 'machineId', width: '100px' },
+      { label: 'วันที่', key: 'date', width: '100px' },
+      { label: 'อาการ', key: 'symptom', width: '250px' },
+      { label: 'สถานะ', key: 'status', width: '120px' },
+    ];
+  } else if (type === 'wait') {
+    data = db.repairRequests.filter(r => r.status === 'รอรับงาน');
+    title = 'งานแจ้งซ่อม - รอดำเนินการ';
+    columns = [
+      { label: 'ใบงาน', key: 'id', width: '100px' },
+      { label: 'เครื่องจักร', key: 'machineId', width: '100px' },
+      { label: 'วันที่', key: 'date', width: '100px' },
+      { label: 'อาการ', key: 'symptom', width: '250px' },
+    ];
+  } else if (type === 'doing') {
+    data = db.repairRequests.filter(r => r.status === 'กำลังดำเนินการ');
+    title = 'งานแจ้งซ่อม - กำลังซ่อม';
+    columns = [
+      { label: 'ใบงาน', key: 'id', width: '100px' },
+      { label: 'เครื่องจักร', key: 'machineId', width: '100px' },
+      { label: 'วันที่', key: 'date', width: '100px' },
+      { label: 'อาการ', key: 'symptom', width: '250px' },
+    ];
+  } else if (type === 'done') {
+    data = db.repairRequests.filter(r => r.status === 'ซ่อมเสร็จ');
+    title = 'งานแจ้งซ่อม - ซ่อมเสร็จแล้ว';
+    columns = [
+      { label: 'ใบงาน', key: 'id', width: '100px' },
+      { label: 'เครื่องจักร', key: 'machineId', width: '100px' },
+      { label: 'วันที่', key: 'date', width: '100px' },
+      { label: 'อาการ', key: 'symptom', width: '250px' },
+    ];
+  } else if (type === 'pm-due') {
+    const t = today();
+    data = db.pmPlans.filter(p => p.nextDate && p.nextDate <= t);
+    title = 'PM ถึงกำหนด';
+    columns = [
+      { label: 'เครื่องจักร', key: 'machineId', width: '100px' },
+      { label: 'รายการ', key: 'item', width: '200px' },
+      { label: 'ความถี่', key: 'frequency', width: '100px' },
+      { label: 'ครั้งถัดไป', key: 'nextDate', width: '100px' },
+    ];
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack}
+                className="btn btn-ghost btn-sm flex items-center gap-1.5"
+                title="กลับไป">
+          <Icon name="close" size={16} />
+          <span>กลับ</span>
+        </button>
+        <h1 className="h2">{title}</h1>
+        <span className="tag">{data.length} รายการ</span>
+      </div>
+
+      <Card padding={false}>
+        {data.length === 0 ? (
+          <div className="p-5"><Empty icon="search" title="ไม่มีข้อมูล" /></div>
+        ) : (
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  {columns.map(col => (
+                    <th key={col.key}>{col.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((row, idx) => (
+                  <tr key={idx}>
+                    {columns.map(col => (
+                      <td key={col.key}>
+                        {col.key === 'status' ? (
+                          <StatusTag value={row[col.key]} />
+                        ) : col.key === 'date' ? (
+                          <span className="num">{fmtDate(row[col.key])}</span>
+                        ) : col.key === 'nextDate' ? (
+                          <span className="num">{fmtDate(row[col.key])}</span>
+                        ) : (
+                          row[col.key] || '-'
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
