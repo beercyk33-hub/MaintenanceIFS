@@ -6643,5 +6643,71 @@ window.MACHINES_SEED = [
     "vendor": "",
     "year": "",
     "note": ""
+  },
+  {
+    "area": "ACC",
+    "sheet": "ACC",
+    "seq": "1",
+    "name": "เครื่องจักร ACC-01",
+    "id": "ACC-01",
+    "location": "สำนักบัญชี",
+    "vendor": "-",
+    "year": "",
+    "note": ""
+  },
+  {
+    "area": "ACC",
+    "sheet": "ACC",
+    "seq": "2",
+    "name": "เครื่องจักร ACC-02",
+    "id": "ACC-02",
+    "location": "สำนักบัญชี",
+    "vendor": "-",
+    "year": "",
+    "note": ""
+  },
+  {
+    "area": "OFFICE",
+    "sheet": "OFFICE",
+    "seq": "1",
+    "name": "เครื่องจักร OFFICE-01",
+    "id": "OFFICE-01",
+    "location": "สำนักงาน",
+    "vendor": "-",
+    "year": "",
+    "note": ""
+  },
+  {
+    "area": "OFFICE",
+    "sheet": "OFFICE",
+    "seq": "2",
+    "name": "เครื่องจักร OFFICE-02",
+    "id": "OFFICE-02",
+    "location": "สำนักงาน",
+    "vendor": "-",
+    "year": "",
+    "note": ""
+  },
+  {
+    "area": "SHE",
+    "sheet": "SHE",
+    "seq": "1",
+    "name": "เครื่องจักร SHE-01",
+    "id": "SHE-01",
+    "location": "ฝ่าย SHE",
+    "vendor": "-",
+    "year": "",
+    "note": ""
+  },
+  {
+    "area": "SHE",
+    "sheet": "SHE",
+    "seq": "2",
+    "name": "เครื่องจักร SHE-02",
+    "id": "SHE-02",
+    "location": "ฝ่าย SHE",
+    "vendor": "-",
+    "year": "",
+    "note": ""
   }
 ];
