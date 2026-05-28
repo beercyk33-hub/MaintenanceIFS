@@ -184,8 +184,6 @@ function PageDashboard({ db, setDb, nav }) {
 }
 
 function DashboardDetailList({ type, db, onBack }) {
-  console.log('DashboardDetailList:', { type, dbMachines: db.machines?.length, dbRequests: db.repairRequests?.length, dbPmPlans: db.pmPlans?.length });
-
   let data = [];
   let title = '';
   let columns = [];
@@ -193,7 +191,6 @@ function DashboardDetailList({ type, db, onBack }) {
   if (type === 'machines') {
     data = db.machines || [];
     title = 'เครื่องจักรทั้งหมด';
-    console.log('machines data:', data.length);
     columns = [
       { label: 'รหัส', key: 'id' },
       { label: 'ชื่อ', key: 'name' },
