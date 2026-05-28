@@ -2,9 +2,9 @@
 function PageDashboard({ db, setDb, nav }) {
   const [detailView, setDetailView] = React.useState(null); // null | 'machines' | 'all-requests' | 'wait' | 'doing' | 'done' | 'pm-due'
 
-  const machines = db.machines;
-  const requests = db.repairRequests;
-  const pmPlans = db.pmPlans;
+  const machines = db?.machines || [];
+  const requests = db?.repairRequests || [];
+  const pmPlans = db?.pmPlans || [];
 
   const counts = React.useMemo(() => {
     const c = { total: requests.length, wait: 0, doing: 0, done: 0, parts: 0, cancel: 0 };
@@ -22,10 +22,6 @@ function PageDashboard({ db, setDb, nav }) {
     const t = today();
     return pmPlans.filter(p => p.nextDate && p.nextDate <= t).length;
   }, [pmPlans]);
-
-  if (detailView) {
-    return <DashboardDetailList type={detailView} db={db} onBack={() => setDetailView(null)} />;
-  }
 
   const statusChart = {
     labels: ['รอรับงาน', 'กำลังดำเนินการ', 'รออะไหล่', 'ซ่อมเสร็จ', 'ยกเลิก'],
@@ -68,6 +64,10 @@ function PageDashboard({ db, setDb, nav }) {
     for (const x of machines) m[x.area] = (m[x.area] || 0) + 1;
     return m;
   }, [machines]);
+
+  if (detailView) {
+    return <DashboardDetailList type={detailView} db={db} onBack={() => setDetailView(null)} />;
+  }
 
   return (
     <div className="flex flex-col gap-4">
