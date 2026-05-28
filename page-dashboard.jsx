@@ -27,12 +27,6 @@ function PageDashboard({ db, setDb, nav }) {
     return <DashboardDetailList type={detailView} db={db} onBack={() => setDetailView(null)} />;
   }
 
-  const machinesByArea = React.useMemo(() => {
-    const m = {};
-    for (const x of machines) m[x.area] = (m[x.area] || 0) + 1;
-    return m;
-  }, [machines]);
-
   const statusChart = {
     labels: ['รอรับงาน', 'กำลังดำเนินการ', 'รออะไหล่', 'ซ่อมเสร็จ', 'ยกเลิก'],
     datasets: [{
