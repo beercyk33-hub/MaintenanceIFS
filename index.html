@@ -367,22 +367,48 @@
     width: 100%;
   }
 
-  /* Hide right sidebar on tablet/mobile - responsive layout */
-  .right-sidebar-panel {
-    display: none !important;
+  /* Right sidebar - visible on all screens, stacks below on small */
+  .right-sidebar-panel { display: block; }
+
+  /* Main app layout: sidebar + content. Stacks on small screens. */
+  .main-layout {
+    display: grid;
+    grid-template-columns: var(--sidebar-w, 240px) 1fr;
+    gap: 1rem;
+    min-width: 0;
+    transition: grid-template-columns 0.25s ease;
   }
-  @media (min-width: 1024px) {
-    .right-sidebar-panel {
-      display: block !important;
+  @media (max-width: 900px) {
+    .main-layout {
+      grid-template-columns: 1fr !important;
     }
+    /* On mobile, sidebar becomes a horizontal scroll strip at top */
+    .main-layout > .sidebar-cell { width: 100%; }
+    .main-layout > .sidebar-cell .sidebar-mobile {
+      position: relative !important;
+      top: auto !important;
+      width: 100% !important;
+    }
+    .main-layout > .sidebar-cell .sidebar-mobile nav {
+      flex-direction: row !important;
+      overflow-x: auto;
+      gap: 0.4rem !important;
+      padding-bottom: 0.25rem;
+      flex-wrap: nowrap;
+    }
+    .main-layout > .sidebar-cell .sidebar-mobile nav .nav-link {
+      flex: none;
+      white-space: nowrap;
+    }
+    .main-layout > .sidebar-cell .sidebar-mobile > div:last-child { display: none; }
   }
 
-  /* Collapse multi-column grids to 1-2 columns on mobile */
-  @media (max-width: 1023px) {
-    /* Hide 2nd and 3rd columns in grids on tablet/mobile */
-    .grid > :nth-child(2),
-    .grid > :nth-child(3) {
-      display: none;
+  /* Collapse fixed-ratio 2-column grids to single column on small screens.
+     auto-fit/minmax grids already collapse themselves. */
+  @media (max-width: 900px) {
+    div.grid[style*="2fr"][style*="1fr"],
+    div.grid[style*="1fr"][style*="2.2fr"] {
+      grid-template-columns: 1fr !important;
     }
   }
 

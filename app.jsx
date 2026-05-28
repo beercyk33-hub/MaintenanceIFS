@@ -158,8 +158,21 @@ function App() {
   const [route, setRoute] = useStickyState('mifs.route', 'dashboard');
   const [conn, setConn] = React.useState('offline');
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useStickyState('mifs.sidebar-collapsed', window.innerWidth < 768);
+  const [sidebarCollapsed, setSidebarCollapsed] = useStickyState('mifs.sidebar-collapsed', false);
+  const [isMobile, setIsMobile] = React.useState(() => window.matchMedia('(max-width: 900px)').matches);
   const [adminUnlocked, setAdminUnlocked] = React.useState(false);
+
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener ? mq.addEventListener('change', handler) : mq.addListener(handler);
+    return () => {
+      mq.removeEventListener ? mq.removeEventListener('change', handler) : mq.removeListener(handler);
+    };
+  }, []);
+
+  // On mobile we force sidebar to expanded (so labels show in the horizontal strip).
+  const effectiveCollapsed = isMobile ? false : sidebarCollapsed;
 
   // helpers exposed to pages
   const setDbAndSave = (updater) => {
@@ -243,8 +256,7 @@ function App() {
     default: page = <window.PageDashboard {...props} />;
   }
 
-  const sidebarWidth = sidebarCollapsed ? '70px' : '240px';
-  const gridCols = sidebarCollapsed ? `${sidebarWidth} 1fr` : `${sidebarWidth} 1fr`;
+  const sidebarWidth = effectiveCollapsed ? '70px' : '240px';
 
   return (
     <DBContext.Provider value={{ db, setDb: setDbAndSave }}>
@@ -252,10 +264,10 @@ function App() {
         <Header db={db} conn={conn}
                 onTest={() => testConn(false)} onLoad={loadFromCloud}
                 onNav={setRoute} onMenu={() => setSidebarCollapsed(!sidebarCollapsed)}
-                sidebarCollapsed={sidebarCollapsed} />
-        <div className="mt-2 sm:mt-3 md:mt-4" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: '1rem', minWidth: 0, transition: 'grid-template-columns 0.25s ease' }}>
-          <div style={{ minWidth: 0, transition: 'width 0.25s ease' }}>
-            <Sidebar route={route} onNav={setRoute} mobileOpen={false} onCloseMobile={() => {}} collapsed={sidebarCollapsed} />
+                sidebarCollapsed={effectiveCollapsed} />
+        <div className="mt-2 sm:mt-3 md:mt-4 main-layout" style={{ '--sidebar-w': sidebarWidth }}>
+          <div className="sidebar-cell" style={{ minWidth: 0, transition: 'width 0.25s ease' }}>
+            <Sidebar route={route} onNav={setRoute} mobileOpen={false} onCloseMobile={() => {}} collapsed={effectiveCollapsed} />
           </div>
           <main style={{ minWidth: 0 }} key={route}>
             <div className="fade-in">{page}</div>

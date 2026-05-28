@@ -1,0 +1,6 @@
+.claude/settings.local.json
+.claude/serve.ps1
+.claude/launch.json
+*.log
+.DS_Store
+Thumbs.db
