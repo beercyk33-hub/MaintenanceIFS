@@ -154,12 +154,15 @@
     const urgencies = ['ต่ำ', 'ปานกลาง', 'สูง', 'ฉุกเฉิน'];
     const statuses = ['รอรับงาน', 'กำลังดำเนินการ', 'รออะไหล่', 'ซ่อมเสร็จ', 'ซ่อมเสร็จ'];
     const reporters = ['คุณสมศักดิ์', 'คุณวิภา', 'คุณธีรพงษ์', 'คุณกุลธิดา', 'คุณเอกชัย'];
-    // Create repairs spread across all machines to cover all areas
-    return Array.from({ length: 20 }, (_, i) => {
-      // Distribute repairs across machines to ensure all areas are represented
-      const machineIndex = Math.floor((i * machines.length) / 20);
+    // Create repairs spread across all machines and areas
+    const repairs = [];
+    const areas = {};
+    // First pass: create repairs while ensuring area coverage
+    for (let i = 0; i < 25; i++) {
+      const machineIndex = Math.floor((i * machines.length) / 25);
       const m = machines[machineIndex] || pick(i);
-      return {
+      areas[m.area] = (areas[m.area] || 0) + 1;
+      repairs.push({
         id: 'RR-' + String(1000 + i),
         date: ago(i * 2),
         time: ['08:30', '10:15', '13:45', '15:20'][i % 4],
@@ -172,8 +175,34 @@
         status: statuses[i % statuses.length],
         assignee: ['นายสมชาย ใจดี','นายประยุทธ ช่างเก่ง','นายวินัย รักงาน','นายธนา สู้งาน'][i % 4],
         note: '',
-      };
-    });
+      });
+    }
+    // Second pass: add repairs for any areas that don't have coverage yet
+    const allAreas = [...new Set(machines.map(m => m.area))];
+    for (const area of allAreas) {
+      if (!areas[area]) {
+        // Find a machine from this area
+        const m = machines.find(x => x.area === area);
+        if (m) {
+          const i = repairs.length;
+          repairs.push({
+            id: 'RR-' + String(1000 + i),
+            date: ago(i * 2),
+            time: ['08:30', '10:15', '13:45', '15:20'][i % 4],
+            machineId: m.id,
+            machineName: m.name,
+            area: m.area,
+            reporter: reporters[i % reporters.length],
+            symptom: symptoms[i % symptoms.length],
+            urgency: urgencies[i % urgencies.length],
+            status: statuses[i % statuses.length],
+            assignee: ['นายสมชาย ใจดี','นายประยุทธ ช่างเก่ง','นายวินัย รักงาน','นายธนา สู้งาน'][i % 4],
+            note: '',
+          });
+        }
+      }
+    }
+    return repairs;
   }
 
   function seedPm(machines) {
