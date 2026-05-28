@@ -110,6 +110,14 @@ const StatusTag = ({ value, colorMap = STATUS_COLORS }) => {
   return <span className={'tag tag-' + c}>{value}</span>;
 };
 
+// ---------- Detail Field ----------
+const DetailField = ({ label, value }) => (
+  <div className="glass-soft rounded-xl p-3">
+    <div style={{ fontSize: '0.72rem', color: 'var(--ink-faint)', fontWeight: 600 }}>{label}</div>
+    <div className="font-semibold" style={{ marginTop: 2, color: 'var(--ink)' }}>{value}</div>
+  </div>
+);
+
 // ---------- KPI Card ----------
 const KPI = ({ label, value, icon, color = '#38e0ff', sub, trend }) => (
   <div className="glass kpi rounded-3xl p-5 fade-in" style={{ '--kpi-color': color + '55' }}>
