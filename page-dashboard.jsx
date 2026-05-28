@@ -184,6 +184,7 @@ function PageDashboard({ db, setDb, nav }) {
 }
 
 function DashboardDetailList({ type, db, onBack }) {
+  const [selectedArea, setSelectedArea] = React.useState(null); // For 'all-requests' grouped by area
   let data = [];
   let title = '';
   let columns = [];
@@ -198,15 +199,32 @@ function DashboardDetailList({ type, db, onBack }) {
       { label: 'สถานะ', key: 'status' },
     ];
   } else if (type === 'all-requests') {
-    data = db.repairRequests;
-    title = 'งานแจ้งซ่อมทั้งหมด';
-    columns = [
+    if (selectedArea) {
+      // Show requests for selected area
+      data = db.repairRequests.filter(r => {
+        const machine = db.machines.find(m => m.id === r.machineId);
+        return machine && machine.area === selectedArea;
+      });
+      title = `งานแจ้งซ่อม - ${selectedArea}`;
+    } else {
+      // Show areas grouped by request count
+      const areas = {};
+      for (const r of db.repairRequests) {
+        const machine = db.machines.find(m => m.id === r.machineId);
+        if (machine) {
+          areas[machine.area] = (areas[machine.area] || 0) + 1;
+        }
+      }
+      data = Object.entries(areas).map(([area, count]) => ({ area, count, id: area }));
+      title = 'งานแจ้งซ่อมทั้งหมด';
+    }
+    columns = selectedArea ? [
       { label: 'ใบงาน', key: 'id' },
       { label: 'เครื่องจักร', key: 'machineId' },
       { label: 'วันที่', key: 'date' },
       { label: 'อาการ', key: 'symptom' },
       { label: 'สถานะ', key: 'status' },
-    ];
+    ] : [];
   } else if (type === 'wait') {
     data = db.repairRequests.filter(r => r.status === 'รอรับงาน');
     title = 'งานแจ้งซ่อม - รอดำเนินการ';
@@ -251,7 +269,7 @@ function DashboardDetailList({ type, db, onBack }) {
       {/* Sticky Header */}
       <div className="sticky top-0 z-10" style={{ background: 'rgba(8, 16, 44, 0.95)', borderBottom: '1px solid var(--line)', backdropFilter: 'blur(10px)' }}>
         <div className="px-4 py-3 flex items-center gap-3">
-          <button onClick={onBack}
+          <button onClick={selectedArea ? () => setSelectedArea(null) : onBack}
                   className="btn btn-ghost btn-sm flex items-center gap-1.5 flex-shrink-0"
                   title="กลับไป">
             <Icon name="close" size={18} />
@@ -269,42 +287,59 @@ function DashboardDetailList({ type, db, onBack }) {
         <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '0.75rem', fontSize: '0.85rem', color: 'var(--ink-dim)' }}>
           พบ {data.length} รายการ
         </div>
-        <Card padding={false}>
-          {data.length === 0 ? (
-            <div className="p-5"><Empty icon="search" title="ไม่มีข้อมูล" /></div>
-          ) : (
-            <div className="tbl-wrap">
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    {columns.map(col => (
-                      <th key={col.key}>{col.label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.map((row, idx) => (
-                    <tr key={idx}>
+
+        {/* Show areas grid for all-requests when no area selected */}
+        {type === 'all-requests' && !selectedArea ? (
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
+            {data.map(item => (
+              <div key={item.area} onClick={() => setSelectedArea(item.area)}
+                   className="cursor-pointer p-4 rounded-xl transition-all hover:scale-105"
+                   style={{ background: 'rgba(56,224,255,0.12)', border: '1px solid rgba(56,224,255,0.3)' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--ink-dim)', marginBottom: '0.5rem' }}>พื้นที่</div>
+                <div className="font-bold text-lg">{item.area}</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--ink-dim)', marginTop: '0.5rem' }}>{item.count} งาน</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Show table for other types or when area is selected */
+          <Card padding={false}>
+            {data.length === 0 ? (
+              <div className="p-5"><Empty icon="search" title="ไม่มีข้อมูล" /></div>
+            ) : (
+              <div className="tbl-wrap">
+                <table className="tbl">
+                  <thead>
+                    <tr>
                       {columns.map(col => (
-                        <td key={col.key}>
-                          {col.key === 'status' ? (
-                            <StatusTag value={row[col.key]} />
-                          ) : col.key === 'date' ? (
-                            <span className="num">{fmtDate(row[col.key])}</span>
-                          ) : col.key === 'nextDate' ? (
-                            <span className="num">{fmtDate(row[col.key])}</span>
-                          ) : (
-                            row[col.key] || '-'
-                          )}
-                        </td>
+                        <th key={col.key}>{col.label}</th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
+                  </thead>
+                  <tbody>
+                    {data.map((row, idx) => (
+                      <tr key={idx}>
+                        {columns.map(col => (
+                          <td key={col.key}>
+                            {col.key === 'status' ? (
+                              <StatusTag value={row[col.key]} />
+                            ) : col.key === 'date' ? (
+                              <span className="num">{fmtDate(row[col.key])}</span>
+                            ) : col.key === 'nextDate' ? (
+                              <span className="num">{fmtDate(row[col.key])}</span>
+                            ) : (
+                              row[col.key] || '-'
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        )}
         <div style={{ height: 20 }} />
       </div>
     </div>
