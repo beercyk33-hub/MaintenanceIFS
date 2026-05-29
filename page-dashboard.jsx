@@ -116,20 +116,30 @@ function PageDashboard({ db, setDb, nav }) {
       {/* Charts */}
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))' }}>
         <Card title="สถานะงานซ่อม">
-          <ChartBox type="doughnut" data={statusChart} height={260}
+          <ChartBox type="doughnut" data={statusChart} height={300}
                     options={{
                       ...chartDefaults(),
                       scales: {},
                       cutout: '65%',
+                      layout: { padding: { top: 4, bottom: 4 } },
                       plugins: { ...chartDefaults().plugins,
-                        legend: { position: 'right', labels: { color: '#dbe6ff', font: { family: 'Sarabun', size: 12 }, boxWidth: 12, boxHeight: 12 } } }
+                        legend: {
+                          position: 'bottom',
+                          labels: {
+                            color: '#dbe6ff',
+                            font: { family: 'Sarabun', size: 12 },
+                            boxWidth: 12, boxHeight: 12,
+                            padding: 12,
+                          },
+                        } }
                     }} />
         </Card>
         <Card title="ประเภทปัญหาที่เกิดบ่อย">
-          <ChartBox type="bar" data={symptomChart} height={260}
+          <ChartBox type="bar" data={symptomChart} height={280}
                     options={{
                       ...chartDefaults(),
                       indexAxis: 'y',
+                      layout: { padding: { left: 4, right: 12 } },
                       plugins: { ...chartDefaults().plugins, legend: { display: false } },
                       scales: {
                         ...(chartDefaults().scales || {}),
@@ -138,9 +148,10 @@ function PageDashboard({ db, setDb, nav }) {
                           ticks: {
                             ...(((chartDefaults().scales || {}).y || {}).ticks || {}),
                             autoSkip: false,
+                            padding: 10,
                             font: { family: 'Sarabun', size: 12 },
                           },
-                          afterFit: (axis) => { axis.width = 96; },
+                          afterFit: (axis) => { axis.width = 120; },
                         },
                       },
                     }} />
