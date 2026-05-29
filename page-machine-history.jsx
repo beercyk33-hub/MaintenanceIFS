@@ -1,17 +1,25 @@
 // ประวัติเครื่องจักร — page-machine-history.jsx
+// 3-level navigation: Areas → Machines → Detail. Every level has a back button.
 function PageMachineHistory({ db, setDb, nav }) {
-  const [q, setQ] = React.useState('');
+  const [selectedArea, setSelectedArea] = React.useState(null);
   const [selectedMachineId, setSelectedMachineId] = React.useState(null);
+  const [q, setQ] = React.useState('');
 
-  const list = React.useMemo(() => {
-    const k = q.trim().toLowerCase();
-    if (!k) return db.machines.slice(0, 200);
-    return db.machines.filter(m =>
-      (m.id || '').toLowerCase().includes(k) || (m.name || '').toLowerCase().includes(k));
-  }, [db.machines, q]);
+  // Deep link from "รายการเครื่องจักร" → "ดูประวัติ": jump straight to the detail.
+  React.useEffect(() => {
+    const focusId = localStorage.getItem('mifs.history.focus');
+    if (!focusId) return;
+    localStorage.removeItem('mifs.history.focus');
+    const m = db.machines.find(x => x.id === focusId);
+    if (m) {
+      setSelectedArea(m.area);
+      setSelectedMachineId(focusId);
+    }
+  }, []);
 
   const selectedMachine = db.machines.find(x => x.id === selectedMachineId);
 
+  // Level 3 — Machine detail
   if (selectedMachineId && selectedMachine) {
     return (
       <MachineHistoryDetail
@@ -22,31 +30,119 @@ function PageMachineHistory({ db, setDb, nav }) {
     );
   }
 
+  // Level 2 — Machines in the selected area
+  if (selectedArea) {
+    return (
+      <MachineAreaList
+        area={selectedArea}
+        db={db}
+        q={q}
+        setQ={setQ}
+        onBack={() => { setSelectedArea(null); setQ(''); }}
+        onPick={(id) => setSelectedMachineId(id)}
+      />
+    );
+  }
+
+  // Level 1 — Areas overview
+  return <AreaOverview db={db} onPick={setSelectedArea} />;
+}
+
+function AreaOverview({ db, onPick }) {
+  const groups = React.useMemo(() => {
+    const m = {};
+    for (const x of db.machines) {
+      if (!x.area) continue;
+      m[x.area] = (m[x.area] || 0) + 1;
+    }
+    return Object.entries(m)
+      .map(([area, count]) => ({ area, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [db.machines]);
+
   return (
     <Card padding={false}>
       <div className="p-4">
-        <div className="h2 flex items-center gap-2 mb-3"><Icon name="machine" size={20} /> เครื่องจักร</div>
-        <SearchInput value={q} onChange={setQ} placeholder="ค้นหารหัส/ชื่อ..." />
+        <div className="h2 flex items-center gap-2 mb-1"><Icon name="history" size={20} /> ประวัติเครื่องจักร</div>
+        <div className="text-xs" style={{ color: 'var(--ink-dim)' }}>เลือกพื้นที่เพื่อดูรายการเครื่องจักร</div>
       </div>
-      <div style={{ maxHeight: 600, overflow: 'auto', borderTop: '1px solid var(--line)' }}>
-        {list.map(x => (
-          <div key={x.id} onClick={() => setSelectedMachineId(x.id)}
-               className={'cursor-pointer p-3 px-4 transition-colors hover:bg-white/[0.05]'}
-               style={{
-                 background: selectedMachineId === x.id ? 'linear-gradient(90deg, rgba(56,224,255,0.16), transparent)' : 'transparent',
-                 borderLeft: selectedMachineId === x.id ? '3px solid #38e0ff' : '3px solid transparent',
-                 borderBottom: '1px solid var(--line)',
-               }}>
-            <div className="flex items-center gap-2">
-              <AreaBadge area={x.area} />
-              <div className="font-semibold">{x.id}</div>
-            </div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--ink-dim)', marginTop: 2 }}>{x.name}</div>
+      <div style={{ borderTop: '1px solid var(--line)', padding: '1rem' }}>
+        {groups.length === 0 ? (
+          <Empty icon="machine" title="ยังไม่มีข้อมูลเครื่องจักร" />
+        ) : (
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
+            {groups.map(g => (
+              <div key={g.area} onClick={() => onPick(g.area)}
+                   className="cursor-pointer p-4 rounded-xl transition-all hover:scale-105"
+                   style={{ background: 'rgba(56,224,255,0.12)', border: '1px solid rgba(56,224,255,0.3)' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--ink-dim)', marginBottom: '0.5rem' }}>พื้นที่</div>
+                <div className="flex items-center gap-2">
+                  <AreaBadge area={g.area} />
+                </div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--ink-dim)', marginTop: '0.5rem' }}>{g.count} เครื่อง</div>
+              </div>
+            ))}
           </div>
-        ))}
-        {list.length === 0 && <Empty icon="search" title="ไม่พบเครื่องจักร" />}
+        )}
       </div>
     </Card>
+  );
+}
+
+function MachineAreaList({ area, db, q, setQ, onBack, onPick }) {
+  const list = React.useMemo(() => {
+    const k = q.trim().toLowerCase();
+    const base = db.machines.filter(m => m.area === area);
+    if (!k) return base;
+    return base.filter(m =>
+      (m.id || '').toLowerCase().includes(k) || (m.name || '').toLowerCase().includes(k));
+  }, [db.machines, area, q]);
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, #02040d 0%, #050a23 18%, #061640 38%, #053b75 65%, #0a73b8 100%)' }}>
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10" style={{ background: 'rgba(8, 16, 44, 0.95)', borderBottom: '1px solid var(--line)', backdropFilter: 'blur(10px)' }}>
+        <div className="px-4 py-3 flex items-center gap-3">
+          <button onClick={onBack}
+                  className="btn btn-ghost btn-sm flex items-center gap-1.5 flex-shrink-0"
+                  title="กลับไปเลือกพื้นที่">
+            <Icon name="close" size={18} />
+            <span>กลับ</span>
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="h3 truncate flex items-center gap-2"><AreaBadge area={area} /> เครื่องจักรในพื้นที่</div>
+            <div className="text-xs" style={{ color: 'var(--ink-dim)' }}>{list.length} เครื่อง</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Scrollable Content */}
+      <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
+        <div style={{ marginBottom: '1rem' }}>
+          <SearchInput value={q} onChange={setQ} placeholder="ค้นหารหัส/ชื่อ..." />
+        </div>
+        <Card padding={false}>
+          {list.length === 0 ? (
+            <div className="p-5"><Empty icon="search" title="ไม่พบเครื่องจักร" /></div>
+          ) : (
+            <div>
+              {list.map(x => (
+                <div key={x.id} onClick={() => onPick(x.id)}
+                     className="cursor-pointer p-3 px-4 transition-colors hover:bg-white/[0.05]"
+                     style={{ borderBottom: '1px solid var(--line)' }}>
+                  <div className="flex items-center gap-2">
+                    <AreaBadge area={x.area} />
+                    <div className="font-semibold">{x.id}</div>
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--ink-dim)', marginTop: 2 }}>{x.name}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+        <div style={{ height: 20 }} />
+      </div>
+    </div>
   );
 }
 
@@ -71,7 +167,7 @@ function MachineHistoryDetail({ machine, db, onBack }) {
         <div className="px-4 py-3 flex items-center gap-3">
           <button onClick={onBack}
                   className="btn btn-ghost btn-sm flex items-center gap-1.5 flex-shrink-0"
-                  title="กลับไปหน้าแรก">
+                  title="กลับไปรายการเครื่องจักร">
             <Icon name="close" size={18} />
             <span>กลับ</span>
           </button>
