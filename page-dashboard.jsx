@@ -135,23 +135,31 @@ function PageDashboard({ db, setDb, nav }) {
                     }} />
         </Card>
         <Card title="ประเภทปัญหาที่เกิดบ่อย">
-          <ChartBox type="bar" data={symptomChart} height={280}
+          <ChartBox type="bar" data={symptomChart} height={300}
                     options={{
                       ...chartDefaults(),
-                      indexAxis: 'y',
-                      layout: { padding: { left: 4, right: 12 } },
+                      layout: { padding: { top: 4, right: 8 } },
                       plugins: { ...chartDefaults().plugins, legend: { display: false } },
                       scales: {
-                        ...(chartDefaults().scales || {}),
-                        y: {
-                          ...((chartDefaults().scales || {}).y || {}),
+                        x: {
                           ticks: {
-                            ...(((chartDefaults().scales || {}).y || {}).ticks || {}),
-                            autoSkip: false,
-                            padding: 10,
+                            color: '#9ab0d6',
                             font: { family: 'Sarabun', size: 12 },
+                            autoSkip: false,
+                            maxRotation: 35,
+                            minRotation: 35,
                           },
-                          afterFit: (axis) => { axis.width = 120; },
+                          grid: { color: 'rgba(255,255,255,0.04)' },
+                        },
+                        y: {
+                          beginAtZero: true,
+                          ticks: {
+                            color: '#9ab0d6',
+                            font: { family: 'Sarabun', size: 11 },
+                            stepSize: 1,
+                            precision: 0,
+                          },
+                          grid: { color: 'rgba(255,255,255,0.06)' },
                         },
                       },
                     }} />
