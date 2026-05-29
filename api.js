@@ -95,6 +95,9 @@
 // The cloud sync (Api.*) is a write-through layer; data stays usable offline.
 (function () {
   const KEY = 'mifs.db.v1';
+  // Bump when seed data (machines / sample repairs / sample PM) needs to roll out
+  // to existing browsers. Migration preserves user-created records (non-seed IDs).
+  const SEED_VERSION = 2;
 
   function defaultDb() {
     const machines = (window.MACHINES_SEED || []).map(m => ({
@@ -111,6 +114,7 @@
       note: m.note || '',
     }));
     return {
+      seedVersion: SEED_VERSION,
       settings: {
         systemName: 'Maintenance IFS',
         company: 'บริษัท ไอเอฟเอส แมนูแฟคเจอริ่ง จำกัด',
@@ -238,6 +242,23 @@
     });
   }
 
+  // Seed IDs follow fixed patterns (RR-1000+, PM-2000+); user-created records use
+  // timestamp-based suffixes. Used by migration to drop only seed rows.
+  const isSeedRepair = (r) => /^RR-10\d{2}$/.test(r && r.id || '');
+  const isSeedPm     = (p) => /^PM-20\d{2}$/.test(p && p.id || '');
+
+  function migrate(db) {
+    if ((db.seedVersion || 1) >= SEED_VERSION) return db;
+    const fresh = defaultDb();
+    const userRepairs = (db.repairRequests || []).filter(r => !isSeedRepair(r));
+    const userPm      = (db.pmPlans || []).filter(p => !isSeedPm(p));
+    db.seedVersion    = SEED_VERSION;
+    db.machines       = fresh.machines;
+    db.repairRequests = [...fresh.repairRequests, ...userRepairs];
+    db.pmPlans        = [...fresh.pmPlans, ...userPm];
+    return db;
+  }
+
   const DB = {
     load() {
       try {
@@ -247,7 +268,9 @@
           localStorage.setItem(KEY, JSON.stringify(d));
           return d;
         }
-        return JSON.parse(raw);
+        const db = migrate(JSON.parse(raw));
+        localStorage.setItem(KEY, JSON.stringify(db));
+        return db;
       } catch (e) {
         const d = defaultDb();
         localStorage.setItem(KEY, JSON.stringify(d));
