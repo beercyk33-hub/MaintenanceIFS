@@ -33,11 +33,31 @@ function PageDashboard({ db, setDb, nav }) {
     }],
   };
 
-  // Frequency by symptom category
+  // Frequency by symptom category — collapse free-text symptoms into short
+  // keyword buckets so the chart label fits on narrow (mobile) screens.
   const symptomChart = React.useMemo(() => {
+    // Order matters: first matching keyword wins.
+    const buckets = [
+      { label: 'มอเตอร์',   keys: ['มอเตอร์', 'motor'] },
+      { label: 'ปั๊ม',       keys: ['ปั๊ม', 'pump'] },
+      { label: 'น้ำมัน/ซีล', keys: ['น้ำมัน', 'ซีล', 'รั่ว', 'oil', 'seal'] },
+      { label: 'สายพาน',    keys: ['สายพาน', 'belt'] },
+      { label: 'ไฟฟ้า',     keys: ['ไฟ', 'ตู้คอนโทรล', 'breaker', 'electric'] },
+      { label: 'PLC',       keys: ['plc', 'error', 'อีรอร์'] },
+      { label: 'เซ็นเซอร์',  keys: ['เซ็นเซอร์', 'sensor'] },
+      { label: 'อุณหภูมิ',   keys: ['อุณหภูมิ', 'ร้อน', 'temp'] },
+      { label: 'ลม/นิวเมติก', keys: ['ลม', 'นิวเมติก', 'air'] },
+      { label: 'น้ำ/ท่อ',    keys: ['น้ำ', 'ท่อ', 'water'] },
+    ];
+    const classify = (sym) => {
+      const s = (sym || '').toLowerCase();
+      if (!s) return 'อื่น ๆ';
+      for (const b of buckets) if (b.keys.some(k => s.includes(k.toLowerCase()))) return b.label;
+      return 'อื่น ๆ';
+    };
     const groups = {};
     for (const r of requests) {
-      const key = (r.symptom || '').split(' ')[0].slice(0, 22) || 'อื่น ๆ';
+      const key = classify(r.symptom);
       groups[key] = (groups[key] || 0) + 1;
     }
     const entries = Object.entries(groups).sort((a, b) => b[1] - a[1]).slice(0, 6);
@@ -111,6 +131,18 @@ function PageDashboard({ db, setDb, nav }) {
                       ...chartDefaults(),
                       indexAxis: 'y',
                       plugins: { ...chartDefaults().plugins, legend: { display: false } },
+                      scales: {
+                        ...(chartDefaults().scales || {}),
+                        y: {
+                          ...((chartDefaults().scales || {}).y || {}),
+                          ticks: {
+                            ...(((chartDefaults().scales || {}).y || {}).ticks || {}),
+                            autoSkip: false,
+                            font: { family: 'Sarabun', size: 12 },
+                          },
+                          afterFit: (axis) => { axis.width = 96; },
+                        },
+                      },
                     }} />
         </Card>
       </div>
