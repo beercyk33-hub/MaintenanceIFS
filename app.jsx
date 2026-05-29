@@ -38,11 +38,12 @@ const Header = ({ db, conn, onTest, onLoad, onNav, onMenu, sidebarCollapsed }) =
         <div className="rounded-2xl flex items-center justify-center"
              style={{
                width: 52, height: 52, flex: 'none',
-               background: 'linear-gradient(135deg, rgba(56,224,255,0.25), rgba(108,140,255,0.25))',
+               background: 'rgba(255,255,255,0.96)',
                border: '1px solid rgba(56,224,255,0.35)',
-               boxShadow: '0 10px 30px -10px rgba(56,224,255,0.5)'
+               boxShadow: '0 10px 30px -10px rgba(56,224,255,0.5)',
+               overflow: 'hidden',
              }}>
-          <Icon name="bolt" size={26} className="text-cyan-200" />
+          <img src="assets/logo.png" alt="IFS Maintenance" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-3 flex-wrap">

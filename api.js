@@ -97,7 +97,12 @@
   const KEY = 'mifs.db.v1';
   // Bump when seed data (machines / sample repairs / sample PM) needs to roll out
   // to existing browsers. Migration preserves user-created records (non-seed IDs).
-  const SEED_VERSION = 2;
+  const SEED_VERSION = 3;
+  // Previous default company values — migration only overwrites if the user hasn't
+  // customised the name themselves (i.e. it still matches one of these).
+  const LEGACY_COMPANIES = [
+    'บริษัท ไอเอฟเอส แมนูแฟคเจอริ่ง จำกัด',
+  ];
 
   function defaultDb() {
     const machines = (window.MACHINES_SEED || []).map(m => ({
@@ -117,7 +122,7 @@
       seedVersion: SEED_VERSION,
       settings: {
         systemName: 'Maintenance IFS',
-        company: 'บริษัท ไอเอฟเอส แมนูแฟคเจอริ่ง จำกัด',
+        company: 'บริษัท อินดัสเทรียล ฟู้ด ซัพพลาย จำกัด',
         department: 'ฝ่ายซ่อมบำรุง',
         owner: 'Narongsak C.',
       },
@@ -256,6 +261,9 @@
     db.machines       = fresh.machines;
     db.repairRequests = [...fresh.repairRequests, ...userRepairs];
     db.pmPlans        = [...fresh.pmPlans, ...userPm];
+    if (db.settings && LEGACY_COMPANIES.includes(db.settings.company)) {
+      db.settings.company = fresh.settings.company;
+    }
     return db;
   }
 
