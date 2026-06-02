@@ -97,11 +97,17 @@
   const KEY = 'mifs.db.v1';
   // Bump when seed data (machines / sample repairs / sample PM) needs to roll out
   // to existing browsers. Migration preserves user-created records (non-seed IDs).
-  const SEED_VERSION = 3;
+  const SEED_VERSION = 4;
   // Previous default company values — migration only overwrites if the user hasn't
   // customised the name themselves (i.e. it still matches one of these).
   const LEGACY_COMPANIES = [
     'บริษัท ไอเอฟเอส แมนูแฟคเจอริ่ง จำกัด',
+  ];
+  // Previous default technician names. If the user's technicians array still
+  // matches one of these snapshots exactly, the migration replaces it with the
+  // current default. Otherwise the user-customised list is left alone.
+  const LEGACY_TECHNICIAN_SETS = [
+    ['นายสมชาย ใจดี', 'นายประยุทธ ช่างเก่ง', 'นายวินัย รักงาน', 'นายธนา สู้งาน'],
   ];
 
   function defaultDb() {
@@ -136,10 +142,10 @@
         { username: 'maint', password: '1234', name: 'ช่างซ่อมบำรุง', role: 'Maintenance' },
       ],
       technicians: [
-        { id: 't1', name: 'นายสมชาย ใจดี',     phone: '081-111-1111', skills: ['ไฟฟ้า', 'PLC'],           areas: ['PRP', 'PRC'] },
-        { id: 't2', name: 'นายประยุทธ ช่างเก่ง', phone: '081-222-2222', skills: ['เครื่องกล', 'ระบบลม'],     areas: ['PRB', 'UHT'] },
-        { id: 't3', name: 'นายวินัย รักงาน',    phone: '081-333-3333', skills: ['ระบบน้ำ', 'หม้อต้ม'],      areas: ['Eng', 'Env'] },
-        { id: 't4', name: 'นายธนา สู้งาน',      phone: '081-444-4444', skills: ['อิเล็กทรอนิกส์', 'เซ็นเซอร์'], areas: ['QC', 'WH'] },
+        { id: 't1', name: 'นายณรงค์ศักดิ์',   phone: '081-111-1111', skills: ['ไฟฟ้า', 'PLC'],            areas: ['PRP', 'PRC'] },
+        { id: 't2', name: 'นายเฉลิมเกียรติ', phone: '081-222-2222', skills: ['เครื่องกล', 'ระบบลม'],      areas: ['PRB', 'UHT'] },
+        { id: 't3', name: 'นายปุณณวิชญ์',    phone: '081-333-3333', skills: ['ระบบน้ำ', 'หม้อต้ม'],       areas: ['Eng', 'Env'] },
+        { id: 't4', name: 'นายปิยวุฒิ',      phone: '081-444-4444', skills: ['อิเล็กทรอนิกส์', 'เซ็นเซอร์'], areas: ['QC', 'WH'] },
       ],
     };
   }
@@ -182,7 +188,7 @@
         symptom: symptoms[i % symptoms.length],
         urgency: urgencies[i % urgencies.length],
         status: statuses[i % statuses.length],
-        assignee: ['นายสมชาย ใจดี','นายประยุทธ ช่างเก่ง','นายวินัย รักงาน','นายธนา สู้งาน'][i % 4],
+        assignee: ['นายณรงค์ศักดิ์','นายเฉลิมเกียรติ','นายปุณณวิชญ์','นายปิยวุฒิ'][i % 4],
         note: '',
       });
     }
@@ -205,7 +211,7 @@
             symptom: symptoms[i % symptoms.length],
             urgency: urgencies[i % urgencies.length],
             status: statuses[i % statuses.length],
-            assignee: ['นายสมชาย ใจดี','นายประยุทธ ช่างเก่ง','นายวินัย รักงาน','นายธนา สู้งาน'][i % 4],
+            assignee: ['นายณรงค์ศักดิ์','นายเฉลิมเกียรติ','นายปุณณวิชญ์','นายปิยวุฒิ'][i % 4],
             note: '',
           });
         }
@@ -241,7 +247,7 @@
         frequency: freq,
         lastDate: fmt(last),
         nextDate: fmt(next),
-        assignee: ['นายสมชาย ใจดี','นายประยุทธ ช่างเก่ง','นายวินัย รักงาน','นายธนา สู้งาน'][i % 4],
+        assignee: ['นายณรงค์ศักดิ์','นายเฉลิมเกียรติ','นายปุณณวิชญ์','นายปิยวุฒิ'][i % 4],
         status: 'รอตรวจสอบ',
       };
     });
@@ -264,6 +270,10 @@
     if (db.settings && LEGACY_COMPANIES.includes(db.settings.company)) {
       db.settings.company = fresh.settings.company;
     }
+    const techNames = (db.technicians || []).map(t => t.name);
+    const matchesLegacy = LEGACY_TECHNICIAN_SETS.some(set =>
+      set.length === techNames.length && set.every((n, i) => n === techNames[i]));
+    if (matchesLegacy) db.technicians = fresh.technicians;
     return db;
   }
 
