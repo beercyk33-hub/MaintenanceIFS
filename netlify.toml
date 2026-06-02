@@ -1,0 +1,24 @@
+# Static site — no build step needed. Netlify just serves the repo root.
+[build]
+  publish = "."
+  command = ""
+
+# SPA-style fallback: any unknown path returns the dashboard (index.html).
+# Harmless for this app today; useful if real routing is added later.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Don't aggressively cache the entry document or seed data — the
+# ?v= cache-buster on script tags handles JS/CSS, but the HTML
+# itself must always be fresh so new ?v= values are seen.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
