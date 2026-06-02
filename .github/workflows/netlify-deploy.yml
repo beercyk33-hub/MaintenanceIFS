@@ -25,14 +25,17 @@ jobs:
       - name: Install Netlify CLI
         run: npm install -g netlify-cli@26
 
+      - name: Link Netlify project
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: netlify link --id f6a345b0-0510-4c2e-812a-983b3d02a966
+
       - name: Deploy to Netlify (production)
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: f6a345b0-0510-4c2e-812a-983b3d02a966
         run: |
           netlify deploy \
             --prod \
             --no-build \
             --dir . \
-            --site maintenance-ifs \
             --message "GitHub Actions ${{ github.sha }}"
