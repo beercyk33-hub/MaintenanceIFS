@@ -28,5 +28,10 @@ jobs:
       - name: Deploy to Netlify (production)
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: f6a345b0-0510-4c2e-812a-983b3d02a966
-        run: netlify deploy --prod --dir . --message "GitHub Actions ${{ github.sha }}"
+        run: |
+          netlify deploy \
+            --prod \
+            --dir . \
+            --site f6a345b0-0510-4c2e-812a-983b3d02a966 \
+            --auth "$NETLIFY_AUTH_TOKEN" \
+            --message "GitHub Actions ${{ github.sha }}"
