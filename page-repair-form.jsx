@@ -1,7 +1,7 @@
-// ใบแจ้งซ่อม / แจ้งดำเนินการ — printable form sheet matching the official paper form.
-// Open from "ติดตามสถานะงานซ่อม" or anywhere a request id is known.
-// Supports: photos at the top (before/condition), photos at the bottom (after-repair),
-// and PDF download via html2canvas + jsPDF.
+// ใบแจ้งซ่อม / แจ้งดำเนินการ — modern card-based sheet (replaces the paper-form layout).
+// Pulls the same data as before (request + matched repairHistory) but presents it as a
+// clean, brand-coloured report with section cards, status chips, and photo galleries.
+// Still printable: html2canvas + jsPDF rasterise the whole sheet into an A4 PDF.
 
 function RepairFormSheet({ request, history, onClose }) {
   const sheetRef = React.useRef(null);
@@ -9,14 +9,36 @@ function RepairFormSheet({ request, history, onClose }) {
 
   const r = request || {};
   const h = history || {};
+  const closed = r.status === 'ซ่อมเสร็จ';
 
-  const reqPhotos  = r.photos || [];
+  const reqPhotos   = r.photos || [];
   const closePhotos = h.photos || [];
 
-  const fmtT = (s) => s || '';
-  const fmtD = (s) => s ? new Date(s).toLocaleDateString('th-TH', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '';
+  const fmtD = (s) => s ? new Date(s).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+  const fmtDS = (s) => s ? new Date(s).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 
-  // PDF download: capture the sheet via html2canvas, fit into an A4 page, save.
+  const URGENCY = {
+    'ฉุกเฉิน':  { bg: '#fde2e7', fg: '#b3173f', label: 'ฉุกเฉิน' },
+    'สูง':      { bg: '#fdebd5', fg: '#a04a00', label: 'เร่งด่วน' },
+    'ปานกลาง':  { bg: '#e2eefd', fg: '#1d4eaf', label: 'ปานกลาง' },
+    'ต่ำ':      { bg: '#e6f4ea', fg: '#0a6e2c', label: 'ไม่เร่งด่วน' },
+  };
+  const STATUS = {
+    'ซ่อมเสร็จ':       { bg: '#d6f1e0', fg: '#0a6e2c', label: 'ปิดงานเรียบร้อย' },
+    'กำลังดำเนินการ':  { bg: '#dbeafe', fg: '#1d4eaf', label: 'กำลังซ่อม' },
+    'รออะไหล่':        { bg: '#fde6c0', fg: '#a04a00', label: 'รออะไหล่' },
+    'รอรับงาน':        { bg: '#f1f3f6', fg: '#3a3f48', label: 'รอรับงาน' },
+    'ยกเลิก':          { bg: '#f1f3f6', fg: '#7b8390', label: 'ยกเลิก' },
+  };
+  const urgencyChip = URGENCY[r.urgency] || URGENCY['ปานกลาง'];
+  const statusChip  = STATUS[r.status] || STATUS['รอรับงาน'];
+
+  // Duration in days when both repair dates exist
+  const repairDays = (h.startDate && h.endDate)
+    ? (Math.round((new Date(h.endDate) - new Date(h.startDate)) / 86400000) + 1)
+    : null;
+
+  // PDF download — capture and fit to A4, multi-page if needed.
   const downloadPdf = async () => {
     if (!sheetRef.current) return;
     if (!window.html2canvas || !window.jspdf) {
@@ -26,10 +48,7 @@ function RepairFormSheet({ request, history, onClose }) {
     setDownloading(true);
     try {
       const canvas = await window.html2canvas(sheetRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        useCORS: true,
-        logging: false,
+        scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
       });
       const imgData = canvas.toDataURL('image/jpeg', 0.92);
       const { jsPDF } = window.jspdf;
@@ -37,28 +56,28 @@ function RepairFormSheet({ request, history, onClose }) {
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
       const ratio = canvas.height / canvas.width;
-      const imgW = pageW;
       const imgH = pageW * ratio;
       if (imgH <= pageH) {
-        pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pageW, imgH);
       } else {
-        // multi-page: slice the canvas vertically
-        let y = 0;
+        // multi-page slicing
         const pageHpx = canvas.width * (pageH / pageW);
+        let y = 0;
         while (y < canvas.height) {
           const slice = document.createElement('canvas');
           slice.width = canvas.width;
           slice.height = Math.min(pageHpx, canvas.height - y);
           const sctx = slice.getContext('2d');
+          sctx.fillStyle = '#fff';
+          sctx.fillRect(0, 0, slice.width, slice.height);
           sctx.drawImage(canvas, 0, y, canvas.width, slice.height, 0, 0, canvas.width, slice.height);
           const sData = slice.toDataURL('image/jpeg', 0.92);
           if (y > 0) pdf.addPage();
-          pdf.addImage(sData, 'JPEG', 0, 0, imgW, (slice.height / canvas.width) * pageW);
+          pdf.addImage(sData, 'JPEG', 0, 0, pageW, (slice.height / canvas.width) * pageW);
           y += slice.height;
         }
       }
-      const filename = 'ใบแจ้งซ่อม-' + (r.id || 'untitled') + '.pdf';
-      pdf.save(filename);
+      pdf.save('ใบแจ้งซ่อม-' + (r.id || 'untitled') + '.pdf');
     } catch (e) {
       window.Swal && window.Swal.fire({ icon: 'error', title: 'สร้าง PDF ไม่สำเร็จ', text: String(e && e.message || e) });
     } finally {
@@ -66,41 +85,77 @@ function RepairFormSheet({ request, history, onClose }) {
     }
   };
 
-  // Helpers for the printed form
-  const Check = ({ on, label }) => (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginRight: 10 }}>
-      <span style={{
-        display: 'inline-block', width: 14, height: 14, border: '1.2px solid #333',
-        background: on ? '#222' : '#fff', flexShrink: 0,
-      }}>
-        {on ? <span style={{ color: '#fff', display: 'block', textAlign: 'center', lineHeight: '12px', fontSize: 11 }}>✓</span> : null}
-      </span>
-      <span>{label}</span>
-    </span>
+  // === Sub-components (light-themed for print) ===
+
+  const Section = ({ title, accent = '#1d4eaf', icon, children, action }) => (
+    <div style={{
+      background: '#fff', border: '1px solid #e5e8ee', borderRadius: 10,
+      padding: '12px 14px', marginBottom: 10,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        {icon && (
+          <div style={{
+            width: 22, height: 22, borderRadius: 6,
+            background: accent + '18', color: accent,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 13, fontWeight: 700,
+          }}>{icon}</div>
+        )}
+        <div style={{ fontWeight: 700, color: '#1a1f2b', fontSize: 12.5, letterSpacing: 0.2 }}>{title}</div>
+        <div style={{ flex: 1, borderBottom: '1px dashed #e0e4eb', marginTop: 2 }}></div>
+        {action}
+      </div>
+      {children}
+    </div>
   );
 
-  const LabelLine = ({ label, value, width = 'auto', flex }) => (
-    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, flex }}>
-      <span style={{ fontWeight: 600 }}>{label}</span>
-      <span style={{
-        borderBottom: '1px dotted #888', minWidth: 60, padding: '0 4px',
-        flex: width === 'auto' ? 1 : undefined, width: width !== 'auto' ? width : undefined,
-      }}>{value || ''}</span>
-    </span>
+  const Chip = ({ bg, fg, children, big }) => (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center',
+      padding: big ? '4px 12px' : '2px 8px',
+      borderRadius: 999, background: bg, color: fg,
+      fontSize: big ? 11.5 : 10.5, fontWeight: 700, lineHeight: 1.4,
+    }}>{children}</span>
   );
 
-  // Pre-compute booleans from existing data
-  const urgent  = r.urgency === 'ฉุกเฉิน' || r.urgency === 'สูง';
-  const closed  = r.status === 'ซ่อมเสร็จ';
-  const repairDays = (h.startDate && h.endDate) ? (Math.round((new Date(h.endDate) - new Date(h.startDate)) / 86400000) + ' วัน') : '';
+  const InfoCell = ({ label, value, mono }) => (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontSize: 9.5, color: '#7b8390', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 12, color: '#1a1f2b', fontWeight: 600, fontFamily: mono ? '"SF Mono", Menlo, Consolas, monospace' : 'inherit', wordBreak: 'break-word' }}>
+        {value || <span style={{ color: '#b8bdc7', fontWeight: 400 }}>—</span>}
+      </div>
+    </div>
+  );
+
+  const PhotoGrid = ({ photos }) => (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+      {photos.map(p => (
+        <div key={p.id} style={{
+          border: '1px solid #e0e4eb', borderRadius: 6, overflow: 'hidden',
+          height: 120, background: '#fafafa', position: 'relative',
+        }}>
+          <img src={p.url || p.dataUrl} alt={p.name} crossOrigin="anonymous"
+               style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+      ))}
+    </div>
+  );
+
+  // Signatures — always present (5 standard roles in the org)
+  const signatures = [
+    { role: 'ผู้แจ้ง',           name: r.reporter, date: r.date },
+    { role: 'QA / Safety',       name: '',         date: '' },
+    { role: 'หัวหน้าแผนก',       name: '',         date: '' },
+    { role: 'ผจก. / แผนกวิศวกรรม', name: h.technician || '', date: h.endDate || '' },
+    { role: 'ผู้จัดการทั่วไป',     name: '',         date: '' },
+  ];
 
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 200,
-      background: 'rgba(2,4,15,0.92)',
-      display: 'flex', flexDirection: 'column',
+      background: 'rgba(2,4,15,0.92)', display: 'flex', flexDirection: 'column',
     }}>
-      {/* Sticky toolbar */}
+      {/* Dark toolbar */}
       <div style={{
         background: 'rgba(8,16,44,0.95)', borderBottom: '1px solid var(--line)',
         padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
@@ -119,230 +174,240 @@ function RepairFormSheet({ request, history, onClose }) {
         </button>
       </div>
 
-      {/* Scrollable sheet area */}
+      {/* Sheet area */}
       <div style={{ flex: 1, overflow: 'auto', padding: '20px', display: 'flex', justifyContent: 'center' }}>
         <div ref={sheetRef} style={{
-          width: '210mm', minHeight: '297mm', background: '#fff', color: '#111',
-          padding: '12mm 10mm', fontFamily: 'Sarabun, Noto Sans Thai, sans-serif', fontSize: 12, lineHeight: 1.4,
+          width: '210mm', minHeight: '297mm',
+          background: 'linear-gradient(180deg, #f7f9fc 0%, #ffffff 200px)',
+          color: '#1a1f2b',
+          padding: '14mm 12mm', fontFamily: '"Sarabun", "Noto Sans Thai", sans-serif',
+          fontSize: 12, lineHeight: 1.5,
           boxShadow: '0 30px 60px -20px rgba(0,0,0,0.6)',
         }}>
-          {/* === Title === */}
-          <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 16, borderBottom: '1.5px solid #111', paddingBottom: 4, marginBottom: 0 }}>
-            ใบแจ้งซ่อม / แจ้งดำเนินการ
-          </div>
-
-          {/* === Header section === */}
-          <div style={{ border: '1.5px solid #111', borderTop: 'none', padding: '6px 8px' }}>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-              <LabelLine label="หน่วยงานแผนก :" value={r.area || ''} flex={2} />
-              <LabelLine label="โดย :" value={r.reporter} flex={2} />
-              <LabelLine label="หมายเลขใบแจ้งซ่อม" value={r.id} flex={1.4} />
+          {/* === HEADER === */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'flex-start',
+            padding: '14px 16px', borderRadius: 12,
+            background: 'linear-gradient(135deg, #1d4eaf 0%, #2b6bd6 50%, #3b89ee 100%)',
+            color: '#fff', marginBottom: 14,
+            boxShadow: '0 10px 24px -12px rgba(29,78,175,0.4)',
+          }}>
+            <div>
+              <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, letterSpacing: 1 }}>
+                MAINTENANCE IFS · REPAIR REQUEST
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, marginTop: 2 }}>
+                ใบแจ้งซ่อม / แจ้งดำเนินการ
+              </div>
+              <div style={{ fontSize: 11, opacity: 0.92, marginTop: 4 }}>
+                บริษัท อินดัสเทรียล ฟู้ด ซัพพลาย จำกัด · ฝ่ายซ่อมบำรุง
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-              <LabelLine label="เครื่องจักร/อุปกรณ์ :" value={r.machineName} flex={3} />
-              <LabelLine label="หมายเลข :" value={r.machineId} flex={1} />
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-              <LabelLine label="อาการเสีย :" value={r.symptom} flex={3} />
-              <LabelLine label="หมายเลข :" value="" flex={1} />
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <LabelLine label="อาการ/ข้อ :" value={r.note || ''} flex={3} />
-              <LabelLine label="วันที่ :" value={fmtD(r.date) + ' ' + fmtT(r.time)} flex={1} />
-            </div>
-            <div style={{ textAlign: 'center', fontSize: 11, marginTop: 4, fontWeight: 600 }}>
-              (ผู้แจ้ง : แผนก/จริมเลขโทรศัพท์ภายใน)
-            </div>
-          </div>
-
-          {/* === Impact + Cause section === */}
-          <div style={{ border: '1.5px solid #111', borderTop: 'none', padding: '6px 8px' }}>
-            <div style={{ marginBottom: 4 }}>
-              <span style={{ fontWeight: 700, marginRight: 14 }}>ผลกระทบ</span>
-              <Check label="Safety"      on={false} />
-              <Check label="Quality"     on={false} />
-              <Check label="Minor Stop"  on={false} />
-              <Check label="Breakdown"   on={urgent} />
-            </div>
-            <div style={{ marginBottom: 4 }}>
-              <span style={{ display: 'inline-block', width: 70 }}>0</span>
-              <Check label="อื่นๆ" on={false} />
-              <span style={{ fontSize: 10, color: '#444' }}>
-                ( 1. Minor flow  2. Lack of basic condition  3. Hard of reach  4. Sources of contaminate  5. Unnecessary item )
-              </span>
-            </div>
-            <div style={{ marginTop: 6 }}>
-              <div style={{ fontWeight: 700, marginBottom: 2 }}>ค้นหาสาเหตุของการเสีย :</div>
-              <div style={{ borderBottom: '1px dotted #888', height: 14 }}>{h.cause || ''}</div>
-              <div style={{ borderBottom: '1px dotted #888', height: 14, marginTop: 6 }}></div>
-              <div style={{ borderBottom: '1px dotted #888', height: 14, marginTop: 6 }}></div>
-            </div>
-            <div style={{ marginTop: 6, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <LabelLine label="เจ้าของพื้นที่ :" value="" width={180} />
-              <LabelLine label="วันที่ :" value="" width={110} />
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 10, opacity: 0.8, fontWeight: 600, letterSpacing: 0.6 }}>เลขใบงาน</div>
+              <div style={{ fontSize: 18, fontWeight: 800, fontFamily: '"SF Mono", Menlo, Consolas, monospace', marginTop: 2 }}>{r.id}</div>
+              <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
+                <Chip bg="rgba(255,255,255,0.22)" fg="#fff" big>{urgencyChip.label}</Chip>
+                <Chip bg="rgba(255,255,255,0.22)" fg="#fff" big>{statusChip.label}</Chip>
+              </div>
             </div>
           </div>
 
-          {/* === Urgency / approval === */}
-          <div style={{ border: '1.5px solid #111', borderTop: 'none', padding: '6px 8px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 1fr 1fr', gap: 4, alignItems: 'center' }}>
-              <div style={{ fontWeight: 700 }}>ความเร่งด่วน</div>
-              <div><Check label="เร่งด่วน" on={urgent} /><Check label="ไม่เร่งด่วน" on={!urgent} /></div>
-              <LabelLine label="ผลแผนก :" value="" />
-              <LabelLine label="วันที่ :" value="" />
-
+          {/* === MACHINE + REPORTER === */}
+          <Section title="ข้อมูลเครื่องจักรและผู้แจ้ง" accent="#1d4eaf" icon="i">
+            <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 1fr 1fr', gap: 12 }}>
+              <div style={{
+                background: '#1d4eaf', color: '#fff', borderRadius: 10, padding: '14px 10px',
+                display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 9.5, opacity: 0.85, letterSpacing: 0.6, fontWeight: 600 }}>พื้นที่</div>
+                <div style={{ fontSize: 22, fontWeight: 800, marginTop: 2, fontFamily: '"SF Mono", Menlo, Consolas, monospace' }}>{r.area || '—'}</div>
+              </div>
+              <InfoCell label="รหัสเครื่อง" value={r.machineId} mono />
+              <InfoCell label="ชื่อเครื่อง" value={r.machineName} />
+              <InfoCell label="ผู้แจ้งซ่อม" value={r.reporter} />
               <div></div>
-              <div><Check label="จำเป็น" on={false} /><Check label="ไม่จำเป็น" on={false} /></div>
-              <LabelLine label="ผลแผนก/QA :" value="" />
-              <LabelLine label="วันที่ :" value="" />
-
-              <div></div>
-              <div><Check label="จำเป็น" on={false} /><Check label="ไม่จำเป็น" on={false} /></div>
-              <LabelLine label="Safety :" value="" />
-              <LabelLine label="วันที่ :" value="" />
-
-              <div></div>
-              <div><Check label="อนุมัติซ่อม" on={closed} /><Check label="ไม่อนุมัติซ่อม" on={false} /></div>
-              <LabelLine label="ผู้อนุมัติ :" value="" />
-              <span style={{ fontSize: 10, color: '#444' }}>(ชื่อตัวบรรจง)</span>
+              <InfoCell label="วันที่แจ้ง" value={fmtD(r.date) + (r.time ? ' · ' + r.time + ' น.' : '')} />
+              <InfoCell label="ผู้รับผิดชอบงาน" value={r.assignee} />
+              <InfoCell label="หมายเหตุ" value={r.note} />
             </div>
-          </div>
+          </Section>
 
-          {/* === Repair details (location / type / LOTO) === */}
-          <div style={{ border: '1.5px solid #111', borderTop: 'none', padding: '6px 8px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr 1fr 1fr', gap: 4, alignItems: 'center' }}>
-              <div style={{ fontWeight: 700 }}>รายละเอียดในการซ่อม</div>
-              <div><Check label="ในบริษัท" on={closed} /></div>
-              <div><Check label="Work shop" on={false} /></div>
-              <div><Check label="ส่วนภายนอก" on={false} /></div>
-
-              <div></div>
-              <div><Check label="บอ่อน Part" on={!!h.parts} /></div>
-              <div><Check label="ปรับแต่ง" on={false} /></div>
-              <div><Check label="Modify" on={false} /></div>
-
-              <div style={{ fontWeight: 700 }}>LOCKOUT-TAGOUT</div>
-              <div><Check label="จำเป็น" on={false} /></div>
-              <div><Check label="ไม่จำเป็น" on={false} /></div>
-              <div></div>
+          {/* === SYMPTOM + IMPACT === */}
+          <Section title="อาการเสีย / ผลกระทบ" accent="#b3173f" icon="!">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 12 }}>
+              <div style={{
+                background: '#fff8f8', border: '1px solid #f6dadf', borderRadius: 10,
+                padding: '10px 12px', minHeight: 70,
+              }}>
+                <div style={{ fontSize: 9.5, color: '#b3173f', fontWeight: 700, letterSpacing: 0.5, marginBottom: 4 }}>อาการที่พบ</div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1f2b', whiteSpace: 'pre-wrap' }}>
+                  {r.symptom || <span style={{ color: '#b8bdc7' }}>(ไม่ระบุ)</span>}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9.5, color: '#7b8390', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 6 }}>ระดับผลกระทบ</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  <Chip bg={urgencyChip.bg} fg={urgencyChip.fg} big>● {urgencyChip.label}</Chip>
+                  {r.urgency === 'ฉุกเฉิน' && <Chip bg="#fde2e7" fg="#b3173f">Breakdown</Chip>}
+                  {(r.urgency === 'สูง' || r.urgency === 'ฉุกเฉิน') && <Chip bg="#fdebd5" fg="#a04a00">Safety risk</Chip>}
+                  {r.urgency === 'ปานกลาง' && <Chip bg="#e2eefd" fg="#1d4eaf">Minor Stop</Chip>}
+                  {r.urgency === 'ต่ำ' && <Chip bg="#e6f4ea" fg="#0a6e2c">Quality</Chip>}
+                </div>
+                <div style={{ fontSize: 10, color: '#7b8390', marginTop: 8, lineHeight: 1.4 }}>
+                  1.Minor flow · 2.Lack of basic condition · 3.Hard of reach · 4.Sources of contaminate · 5.Unnecessary item
+                </div>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-              <LabelLine label="อื่นๆ" value={h.detail || ''} flex={1} />
-            </div>
-          </div>
+          </Section>
 
-          {/* === BEFORE PHOTOS — แนบรูปอาการเสีย === */}
+          {/* === BEFORE PHOTOS === */}
           {reqPhotos.length > 0 && (
-            <div style={{ border: '1.5px solid #111', borderTop: 'none', padding: '6px 8px' }}>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>ภาพอาการเสีย (ตอนแจ้งซ่อม) — {reqPhotos.length} ภาพ</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-                {reqPhotos.map(p => (
-                  <div key={p.id} style={{ border: '1px solid #ccc', height: 100, overflow: 'hidden', background: '#fafafa' }}>
-                    <img src={p.url || p.dataUrl} alt={p.name}
-                         crossOrigin="anonymous"
-                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                ))}
-              </div>
-            </div>
+            <Section title={`ภาพอาการเสีย (ตอนแจ้งซ่อม) · ${reqPhotos.length} ภาพ`} accent="#b3173f" icon="📷">
+              <PhotoGrid photos={reqPhotos} />
+            </Section>
           )}
 
-          {/* === Repair items + cause + prevention === */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', border: '1.5px solid #111', borderTop: 'none' }}>
-            <div style={{ padding: '6px 8px', borderRight: '1px solid #111' }}>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>รายการที่ซ่อมแก้ไข</div>
-              {[1,2,3,4,5].map(i => {
-                const txt = i === 1 ? (h.solution || '') : '';
-                return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
-                    <span>{i}.</span>
-                    <span style={{ flex: 1, borderBottom: '1px dotted #888', minHeight: 14 }}>{txt}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <div style={{ padding: '6px 8px' }}>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>ค้นหาสาเหตุปัญหา</div>
-              {[1,2,3].map(i => {
-                const txt = i === 1 ? (h.cause || '') : '';
-                return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
-                    <span>{i}.</span>
-                    <span style={{ flex: 1, borderBottom: '1px dotted #888', minHeight: 14 }}>{txt}</span>
-                  </div>
-                );
-              })}
-              <div style={{ fontWeight: 700, margin: '8px 0 4px' }}>การป้องกันการเกิดซ้ำ</div>
-              {[1,2,3].map(i => (
-                <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
-                  <span>{i}.</span>
-                  <span style={{ flex: 1, borderBottom: '1px dotted #888', minHeight: 14 }}></span>
+          {/* === REPAIR DETAILS === */}
+          <Section
+            title="รายละเอียดการซ่อม"
+            accent="#0a6e2c"
+            icon="✓"
+            action={
+              closed
+                ? <Chip bg="#d6f1e0" fg="#0a6e2c">ปิดงานแล้ว</Chip>
+                : <Chip bg="#fde6c0" fg="#a04a00">ยังไม่ปิดงาน</Chip>
+            }
+          >
+            {closed && h.id ? (
+              <>
+                {/* Timeline */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12,
+                  background: '#f7faf8', border: '1px solid #d5e9dc', borderRadius: 10,
+                  padding: '10px 12px', marginBottom: 10,
+                }}>
+                  <InfoCell label="วันที่เริ่มซ่อม" value={fmtDS(h.startDate)} />
+                  <InfoCell label="วันที่ซ่อมเสร็จ" value={fmtDS(h.endDate)} />
+                  <InfoCell label="ระยะเวลา" value={repairDays != null ? repairDays + ' วัน' : '—'} />
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* === Time === */}
-          <div style={{ border: '1.5px solid #111', borderTop: 'none', padding: '6px 8px' }}>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'baseline' }}>
-              <LabelLine label="เวลาที่ซ่อม :" value={fmtD(h.startDate)} width={150} />
-              <LabelLine label="เวลาซ่อมเสร็จ :" value={fmtD(h.endDate)} width={150} />
-              <LabelLine label="ใช้งานทั้งสิ้น" value={repairDays} width={120} />
-              <span>นาที / วัน</span>
-            </div>
-            <div style={{ fontSize: 10, color: '#444', marginTop: 6 }}>
-              <b>หมายเหตุ :</b> เวลาซ่อม, ค้นหาปัญหา, การป้องกันการเกิดซ้ำจะลงทุนเฉพาะที่เป็นเครื่องจักร Critical เท่านั้น
-            </div>
-          </div>
+                {/* Cause / Solution / Test */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: '#7b8390', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 4 }}>สาเหตุของปัญหา</div>
+                    <div style={{ background: '#fafbfd', border: '1px solid #e5e8ee', borderRadius: 8, padding: '8px 10px', minHeight: 50, fontSize: 12, whiteSpace: 'pre-wrap' }}>
+                      {h.cause || <span style={{ color: '#b8bdc7' }}>—</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: '#0a6e2c', fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 4 }}>วิธีแก้ไข</div>
+                    <div style={{ background: '#f7faf8', border: '1px solid #d5e9dc', borderRadius: 8, padding: '8px 10px', minHeight: 50, fontSize: 12, whiteSpace: 'pre-wrap' }}>
+                      {h.solution || <span style={{ color: '#b8bdc7' }}>—</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: '#7b8390', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 4 }}>รายละเอียดเพิ่มเติม</div>
+                    <div style={{ background: '#fafbfd', border: '1px solid #e5e8ee', borderRadius: 8, padding: '8px 10px', minHeight: 50, fontSize: 12, whiteSpace: 'pre-wrap' }}>
+                      {h.detail || <span style={{ color: '#b8bdc7' }}>—</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: '#7b8390', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 4 }}>ผลการทดสอบ</div>
+                    <div style={{ background: '#fafbfd', border: '1px solid #e5e8ee', borderRadius: 8, padding: '8px 10px', minHeight: 50, fontSize: 12, whiteSpace: 'pre-wrap' }}>
+                      {h.testResult || <span style={{ color: '#b8bdc7' }}>—</span>}
+                    </div>
+                  </div>
+                </div>
 
-          {/* === AFTER PHOTOS — แนบรูปหลังซ่อม === */}
+                {/* Parts / Cost / Technician / Status */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12,
+                  marginTop: 10, padding: '10px 12px', background: '#fafbfd',
+                  border: '1px solid #e5e8ee', borderRadius: 10,
+                }}>
+                  <InfoCell label="อะไหล่ที่ใช้" value={h.parts} />
+                  <InfoCell label="ค่าใช้จ่าย" value={h.cost ? Number(h.cost).toLocaleString() + ' บาท' : null} />
+                  <InfoCell label="ผู้ดำเนินการ" value={h.technician} />
+                  <InfoCell label="สถานะหลังซ่อม" value={h.afterStatus} />
+                </div>
+              </>
+            ) : (
+              <div style={{
+                padding: '18px 14px', textAlign: 'center', color: '#7b8390',
+                background: '#fafbfd', border: '1px dashed #d5dae3', borderRadius: 10,
+              }}>
+                <div style={{ fontSize: 12 }}>ยังไม่มีการบันทึกประวัติการซ่อมสำหรับใบงานนี้</div>
+                <div style={{ fontSize: 10.5, marginTop: 4 }}>เมื่อปิดงานแล้ว ข้อมูลการซ่อมจะปรากฏที่นี่</div>
+              </div>
+            )}
+          </Section>
+
+          {/* === AFTER PHOTOS === */}
           {closePhotos.length > 0 && (
-            <div style={{ border: '1.5px solid #111', borderTop: 'none', padding: '6px 8px' }}>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>ภาพหลังการซ่อม (ตอนปิดงาน) — {closePhotos.length} ภาพ</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-                {closePhotos.map(p => (
-                  <div key={p.id} style={{ border: '1px solid #ccc', height: 100, overflow: 'hidden', background: '#fafafa' }}>
-                    <img src={p.url || p.dataUrl} alt={p.name}
-                         crossOrigin="anonymous"
-                         style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                ))}
-              </div>
-            </div>
+            <Section title={`ภาพหลังการซ่อม (ตอนปิดงาน) · ${closePhotos.length} ภาพ`} accent="#0a6e2c" icon="📷">
+              <PhotoGrid photos={closePhotos} />
+            </Section>
           )}
 
-          {/* === Inspection === */}
-          <div style={{ border: '1.5px solid #111', borderTop: 'none', padding: '6px 8px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 1fr 1fr', gap: 4, alignItems: 'center' }}>
-              <div style={{ fontWeight: 700 }}>การตรวจรับงาน<br/><span style={{ fontWeight: 400, fontSize: 10 }}>(ผู้แจ้ง)</span></div>
-              <div><Check label="พื้นที่สะอาด" on={closed} /></div>
-              <div><Check label="ไม่มีเครื่องมือคำกัน" on={closed} /></div>
-              <div><Check label="เครื่องจักร/อุปกรณ์ใช้งานได้ปกติ" on={closed && h.afterStatus === 'ใช้งานได้'} /></div>
-              <div></div>
-              <div style={{ gridColumn: '2 / -1' }}>
-                <LabelLine label="อื่นๆ" value={h.testResult || ''} flex={1} />
-              </div>
-            </div>
-            <div style={{ fontWeight: 700, marginTop: 6 }}>ตรวจสอบโดย</div>
-          </div>
-
-          {/* === Signatures === */}
-          <div style={{ border: '1.5px solid #111', borderTop: 'none', padding: '14px 8px 8px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, textAlign: 'center', fontSize: 11 }}>
+          {/* === INSPECTION === */}
+          <Section title="การตรวจรับงาน" accent="#1d4eaf" icon="✓">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {[
-                { role: 'ผู้แจ้ง', name: r.reporter },
-                { role: 'QA/Safety', name: '' },
-                { role: 'หัวหน้าแผนก', name: '' },
-                { role: 'ผจก./หลก./แผนกวิศวกรรม', name: h.technician || '' },
-                { role: 'ผู้จัดการทั่วไป', name: '' },
-              ].map((sig, i) => (
-                <div key={i}>
-                  <div style={{ borderBottom: '1px solid #111', height: 24, marginBottom: 2 }}>{sig.name}</div>
-                  <div style={{ fontWeight: 700 }}>{sig.role}</div>
-                  <div style={{ marginTop: 4 }}>วันที่ ......./......./.......</div>
+                { label: 'พื้นที่สะอาด', ok: closed },
+                { label: 'ไม่มีเครื่องมือค้าง', ok: closed },
+                { label: 'เครื่องจักรใช้งานได้ปกติ', ok: closed && h.afterStatus === 'ใช้งานได้' },
+              ].map((c, i) => (
+                <div key={i} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px', borderRadius: 999,
+                  background: c.ok ? '#d6f1e0' : '#f1f3f6',
+                  color: c.ok ? '#0a6e2c' : '#7b8390',
+                  fontSize: 11.5, fontWeight: 600, border: '1px solid ' + (c.ok ? '#b6e2c5' : '#e0e4eb'),
+                }}>
+                  <span style={{
+                    display: 'inline-flex', width: 16, height: 16, borderRadius: 4,
+                    background: c.ok ? '#0a6e2c' : 'transparent',
+                    border: c.ok ? 'none' : '1.4px solid #b8bdc7',
+                    color: '#fff', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11,
+                  }}>{c.ok ? '✓' : ''}</span>
+                  {c.label}
                 </div>
               ))}
             </div>
+          </Section>
+
+          {/* === SIGNATURES === */}
+          <Section title="ผู้ตรวจสอบและอนุมัติ" accent="#3a3f48" icon="✎">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+              {signatures.map((s, i) => (
+                <div key={i} style={{
+                  border: '1px solid #e5e8ee', borderRadius: 8, padding: '10px 8px',
+                  background: '#fff', display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', textAlign: 'center', minHeight: 86,
+                }}>
+                  <div style={{
+                    flex: 1, width: '100%', borderBottom: '1px solid #c5cad3',
+                    fontSize: 11, color: '#1a1f2b', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 2,
+                  }}>{s.name || ''}</div>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#3a3f48', marginTop: 4 }}>{s.role}</div>
+                  <div style={{ fontSize: 9.5, color: '#7b8390', marginTop: 2 }}>
+                    {s.date ? fmtDS(s.date) : 'วันที่ ........./........./.........'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          {/* === FOOTER === */}
+          <div style={{
+            marginTop: 12, padding: '8px 12px',
+            fontSize: 9.5, color: '#7b8390', textAlign: 'center',
+            borderTop: '1px solid #e5e8ee',
+          }}>
+            สร้างโดยระบบ Maintenance IFS · {fmtDS(new Date().toISOString().slice(0,10))} ·
+            หมายเหตุ: เวลาซ่อม, สาเหตุปัญหา และการป้องกันการเกิดซ้ำ ลงเฉพาะกรณีเครื่องจักร Critical
           </div>
         </div>
       </div>
