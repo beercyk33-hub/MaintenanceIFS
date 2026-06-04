@@ -35,6 +35,7 @@ const Icon = ({ name, size = 18, className = '', stroke = 1.7 }) => {
     pdf:       <><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><text x="7.5" y="17" fontSize="6" fill="currentColor" stroke="none" fontWeight="700">PDF</text></>,
     xls:       <><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><text x="7.5" y="17" fontSize="6" fill="currentColor" stroke="none" fontWeight="700">XLS</text></>,
     spark:     <><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></>,
+    'arrow-right': <><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
