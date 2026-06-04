@@ -3,6 +3,7 @@ function PageRepairTracking({ db, setDb, nav }) {
   const [q, setQ] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState('ALL');
   const [detail, setDetail] = React.useState(null);
+  const [formSheet, setFormSheet] = React.useState(null);
 
   const STATUSES = ['รอรับงาน','กำลังดำเนินการ','รออะไหล่','ซ่อมเสร็จ','ยกเลิก'];
 
@@ -140,6 +141,9 @@ function PageRepairTracking({ db, setDb, nav }) {
              footer={
                <>
                  <button className="btn btn-ghost" onClick={() => setDetail(null)}>ปิด</button>
+                 <button className="btn" onClick={() => { const d = detail; setDetail(null); setFormSheet(d); }}>
+                   <Icon name="file" size={14} /> ใบแจ้งซ่อม (PDF)
+                 </button>
                  <button className="btn btn-primary" onClick={() => { setDetail(null); nav('repair-rec'); localStorage.setItem('mifs.record.focus', detail?.id || ''); }}>
                    <Icon name="edit" size={14} /> บันทึกประวัติการซ่อม
                  </button>
@@ -147,6 +151,14 @@ function PageRepairTracking({ db, setDb, nav }) {
              }>
         {detail && <RepairDetail r={detail} db={db} />}
       </Modal>
+
+      {formSheet && window.RepairFormSheet && (
+        <window.RepairFormSheet
+          request={formSheet}
+          history={db.repairHistory.find(h => h.requestId === formSheet.id)}
+          onClose={() => setFormSheet(null)}
+        />
+      )}
     </Card>
   );
 }
