@@ -86,6 +86,8 @@ const Field = ({ label, children, required, hint, className = '' }) => (
 
 // ---------- Status helpers ----------
 const STATUS_COLORS = {
+  'รออนุมัติ': 'info',
+  'ถูกปฏิเสธ': 'bad',
   'รอรับงาน': 'warn',
   'กำลังดำเนินการ': 'info',
   'รออะไหล่': 'warn',

@@ -10,10 +10,11 @@ function PageRepairRequest({ db, setDb, nav }) {
     reporter: '',
     symptom: '',
     urgency: 'ปานกลาง',
-    status: 'รอรับงาน',
+    status: 'รออนุมัติ',
     assignee: '',
     note: '',
     photos: [],
+    approvals: window.emptyApprovals ? window.emptyApprovals() : undefined,
   });
 
   const [form, setForm] = React.useState(empty);
@@ -133,18 +134,20 @@ function PageRepairRequest({ db, setDb, nav }) {
               {['ต่ำ','ปานกลาง','สูง','ฉุกเฉิน'].map(s => <option key={s}>{s}</option>)}
             </select>
           </Field>
-          <Field label="สถานะงาน">
-            <select className="select" value={form.status} onChange={e => set('status', e.target.value)}>
-              {['รอรับงาน','กำลังดำเนินการ','รออะไหล่','ซ่อมเสร็จ','ยกเลิก'].map(s => <option key={s}>{s}</option>)}
-            </select>
-          </Field>
-
-          <Field label="ผู้รับผิดชอบงานซ่อม">
+          <Field label="ผู้รับผิดชอบงานซ่อม (เสนอ)">
             <select className="select" value={form.assignee} onChange={e => set('assignee', e.target.value)}>
               <option value="">— ยังไม่ระบุ —</option>
               {db.technicians.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
             </select>
           </Field>
+          <div className="rounded-xl px-4 py-3" style={{
+            gridColumn: '1/-1',
+            background: 'rgba(108,140,255,0.08)', border: '1px solid rgba(108,140,255,0.25)',
+            display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.85rem',
+          }}>
+            <Icon name="bell" size={16} />
+            <span>หลังบันทึก ใบงานจะเข้าสู่ขั้นรออนุมัติจาก <b>ผจก. · QA · Safety · COO</b> ก่อนจึงเริ่มซ่อมได้</span>
+          </div>
           <div style={{ gridColumn: '1/-1' }}>
             <Field label="หมายเหตุ">
               <textarea className="textarea" value={form.note} onChange={e => set('note', e.target.value)} />

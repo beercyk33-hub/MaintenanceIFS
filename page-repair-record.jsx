@@ -22,13 +22,21 @@ function PageRepairRecord({ db, setDb, nav }) {
 
   React.useEffect(() => () => localStorage.removeItem('mifs.record.focus'), []);
 
-  const openRequests = db.repairRequests.filter(r => r.status !== 'ซ่อมเสร็จ' && r.status !== 'ยกเลิก');
+  // Only requests that are fully approved AND still open can be closed here.
+  const openRequests = db.repairRequests.filter(r =>
+    r.status !== 'ซ่อมเสร็จ' && r.status !== 'ยกเลิก' && r.status !== 'ถูกปฏิเสธ' &&
+    (window.isFullyApproved ? window.isFullyApproved(r) : true));
   const selected = db.repairRequests.find(r => r.id === form.requestId);
+  const selectedBlocked = selected && window.isFullyApproved && !window.isFullyApproved(selected);
 
   const submit = async (e) => {
     e.preventDefault();
     if (!form.requestId || !form.solution || !form.technician) {
       toast('warning', 'กรุณาเลือกใบงาน, กรอกวิธีแก้ไข และผู้ดำเนินการ');
+      return;
+    }
+    if (selected && window.isFullyApproved && !window.isFullyApproved(selected)) {
+      toast('warning', 'ใบงานนี้ยังไม่ผ่านการอนุมัติครบทุกขั้น');
       return;
     }
     setSaving(true);
@@ -104,6 +112,17 @@ function PageRepairRecord({ db, setDb, nav }) {
               <div style={{ color: 'var(--ink-dim)' }}>{selected.machineName}</div>
               <div className="flex-1" />
               <span style={{ fontSize: '0.84rem', color: 'var(--ink-dim)' }}>อาการ: {selected.symptom}</span>
+            </div>
+          )}
+
+          {selectedBlocked && (
+            <div className="rounded-xl px-4 py-3" style={{
+              gridColumn: '1/-1',
+              background: 'rgba(255,154,75,0.12)', border: '1px solid rgba(255,154,75,0.4)',
+              color: '#ffd580', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <Icon name="bell" size={16} />
+              <span>ใบงานนี้ยังไม่ผ่านการอนุมัติครบทั้ง 4 ขั้น (ผจก. / QA / Safety / COO) — ยังบันทึกการซ่อมไม่ได้</span>
             </div>
           )}
 

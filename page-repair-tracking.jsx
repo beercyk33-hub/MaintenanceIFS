@@ -4,8 +4,26 @@ function PageRepairTracking({ db, setDb, nav }) {
   const [statusFilter, setStatusFilter] = React.useState('ALL');
   const [detail, setDetail] = React.useState(null);
   const [formSheet, setFormSheet] = React.useState(null);
+  const [approving, setApproving] = React.useState(null);
 
-  const STATUSES = ['รอรับงาน','กำลังดำเนินการ','รออะไหล่','ซ่อมเสร็จ','ยกเลิก'];
+  const STATUSES = ['รออนุมัติ','ถูกปฏิเสธ','รอรับงาน','กำลังดำเนินการ','รออะไหล่','ซ่อมเสร็จ','ยกเลิก'];
+
+  const onApprovalSubmit = (roleKey, slot) => {
+    if (!approving) return;
+    const next = window.applyApproval(approving, roleKey, slot);
+    setDb(prev => ({
+      ...prev,
+      repairRequests: prev.repairRequests.map(r => r.id === next.id ? next : r),
+    }));
+    window.Api.update('RepairRequests', next.id, 'id', {
+      status: next.status,
+      approvals: JSON.stringify(next.approvals),
+    }).catch(() => {});
+    toast('success', slot.status === 'approved' ? 'อนุมัติเรียบร้อย' : 'บันทึกการปฏิเสธแล้ว');
+    // Re-select with updated data so the dialog reflects new state
+    const updated = next;
+    setApproving(slot.status === 'rejected' || window.isFullyApproved(updated) ? null : updated);
+  };
 
   const filtered = React.useMemo(() => {
     let list = db.repairRequests;
@@ -81,8 +99,9 @@ function PageRepairTracking({ db, setDb, nav }) {
             <th>อาการ</th>
             <th>ความเร่งด่วน</th>
             <th>สถานะ</th>
+            <th>อนุมัติ</th>
             <th>ผู้รับผิดชอบ</th>
-            <th style={{ width: 150 }}></th>
+            <th style={{ width: 180 }}></th>
           </tr></thead>
           <tbody>
             {filtered.map(r => (
@@ -111,16 +130,23 @@ function PageRepairTracking({ db, setDb, nav }) {
                 <td style={{ maxWidth: 240 }}>{r.symptom}</td>
                 <td><StatusTag value={r.urgency} colorMap={URGENCY_COLORS} /></td>
                 <td><StatusTag value={r.status} /></td>
+                <td>{window.ApprovalDots ? <window.ApprovalDots request={r} /> : null}</td>
                 <td>{r.assignee || <span style={{ color: 'var(--ink-faint)' }}>—</span>}</td>
                 <td>
                   <div className="flex gap-1 justify-end">
                     <button className="btn btn-ghost btn-sm" title="รายละเอียด" onClick={() => setDetail(r)}>
                       <Icon name="eye" size={13} />
                     </button>
+                    {!window.isFullyApproved(r) && !window.isRejected(r) && (
+                      <button className="btn btn-sm" title="อนุมัติ" onClick={() => setApproving(r)}
+                              style={{ background: '#6c8cff', color: '#fff', border: 'none' }}>
+                        <Icon name="check" size={13} />
+                      </button>
+                    )}
                     <button className="btn btn-ghost btn-sm" title="แก้ไขสถานะ" onClick={() => updateStatus(r)}>
                       <Icon name="edit" size={13} />
                     </button>
-                    {r.status !== 'ซ่อมเสร็จ' && r.status !== 'ยกเลิก' && (
+                    {r.status !== 'ซ่อมเสร็จ' && r.status !== 'ยกเลิก' && r.status !== 'ถูกปฏิเสธ' && window.isFullyApproved(r) && (
                       <button className="btn btn-good btn-sm" title="ปิดงาน" onClick={() => closeWork(r)}>
                         <Icon name="check" size={13} />
                       </button>
@@ -130,7 +156,7 @@ function PageRepairTracking({ db, setDb, nav }) {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={9}><Empty icon="wrench" title="ไม่พบงานซ่อม" /></td></tr>
+              <tr><td colSpan={10}><Empty icon="wrench" title="ไม่พบงานซ่อม" /></td></tr>
             )}
           </tbody>
         </table>
@@ -157,6 +183,14 @@ function PageRepairTracking({ db, setDb, nav }) {
           request={formSheet}
           history={db.repairHistory.find(h => h.requestId === formSheet.id)}
           onClose={() => setFormSheet(null)}
+        />
+      )}
+
+      {approving && window.ApprovalDialog && (
+        <window.ApprovalDialog
+          request={approving}
+          onClose={() => setApproving(null)}
+          onSubmit={onApprovalSubmit}
         />
       )}
     </Card>
@@ -198,6 +232,15 @@ function RepairDetail({ r, db }) {
             <Icon name="file" size={13} /> ภาพประกอบการแจ้งซ่อม ({r.photos.length})
           </div>
           <PhotoGallery photos={r.photos} thumb={88} />
+        </div>
+      )}
+
+      {window.ApprovalTimeline && (
+        <div>
+          <div style={{ fontSize: '0.74rem', color: 'var(--ink-faint)', fontWeight: 600, marginBottom: 6 }} className="flex items-center gap-1">
+            <Icon name="check" size={13} /> สถานะการอนุมัติ
+          </div>
+          <window.ApprovalTimeline request={r} />
         </div>
       )}
 

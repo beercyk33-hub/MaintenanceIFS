@@ -141,13 +141,18 @@ function RepairFormSheet({ request, history, onClose }) {
     </div>
   );
 
-  // Signatures — always present (5 standard roles in the org)
+  // Signatures — pulled from the approval workflow when available, otherwise blank.
+  const ap = (r.approvals && !r.approvals.legacy) ? r.approvals : {};
+  const sigOf = (key) => {
+    const slot = ap[key];
+    return slot && slot.status === 'approved' ? { name: slot.name, date: slot.date } : { name: '', date: '' };
+  };
   const signatures = [
-    { role: 'ผู้แจ้ง',           name: r.reporter, date: r.date },
-    { role: 'QA / Safety',       name: '',         date: '' },
-    { role: 'หัวหน้าแผนก',       name: '',         date: '' },
-    { role: 'ผจก. / แผนกวิศวกรรม', name: h.technician || '', date: h.endDate || '' },
-    { role: 'ผู้จัดการทั่วไป',     name: '',         date: '' },
+    { role: 'ผู้แจ้ง',           ...{ name: r.reporter, date: r.date } },
+    { role: 'ผจก. แผนก',         ...sigOf('deptManager') },
+    { role: 'QA (ความเสี่ยง)',   ...sigOf('qaRisk') },
+    { role: 'Safety (Golden Rules)', ...sigOf('safety') },
+    { role: 'COO อนุมัติ',       ...sigOf('coo') },
   ];
 
   return (
