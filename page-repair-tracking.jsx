@@ -3,7 +3,7 @@
 // into the list of requests with that status. All actions (approve, edit, close,
 // detail, form-sheet) live on the drill-down page.
 
-function PageRepairTracking({ db, setDb, nav }) {
+function PageRepairTracking({ db, setDb, nav, currentUser, requestLogin }) {
   const [selectedStatus, setSelectedStatus] = React.useState(null);
   const [q, setQ] = React.useState('');
   const [detail, setDetail] = React.useState(null);
@@ -176,7 +176,12 @@ function PageRepairTracking({ db, setDb, nav }) {
                               <Icon name="eye" size={13} />
                             </button>
                             {!window.isFullyApproved(r) && !window.isRejected(r) && (
-                              <button className="btn btn-sm" title="อนุมัติ" onClick={() => setApproving(r)}
+                              <button className="btn btn-sm"
+                                      title={currentUser ? 'อนุมัติ' : 'เข้าสู่ระบบเพื่ออนุมัติ'}
+                                      onClick={() => {
+                                        if (!currentUser && requestLogin) requestLogin('กรุณาเข้าสู่ระบบเพื่ออนุมัติงาน');
+                                        else setApproving(r);
+                                      }}
                                       style={{ background: '#6c8cff', color: '#fff', border: 'none' }}>
                                 <Icon name="check" size={13} />
                               </button>
@@ -229,6 +234,7 @@ function PageRepairTracking({ db, setDb, nav }) {
         {approving && window.ApprovalDialog && (
           <window.ApprovalDialog
             request={approving}
+            currentUser={currentUser}
             onClose={() => setApproving(null)}
             onSubmit={onApprovalSubmit}
           />

@@ -28,7 +28,7 @@ const NAV = [
   { key: 'admin',        label: 'ส่วนผู้ดูแลระบบ',    icon: 'shield'    },
 ];
 
-const Header = ({ db, conn, onTest, onLoad, onNav, onMenu, sidebarCollapsed }) => (
+const Header = ({ db, conn, onTest, onLoad, onNav, onMenu, sidebarCollapsed, currentUser, onUserClick }) => (
   <div className="glass rounded-3xl px-5 py-4 fade-in">
     <div className="flex items-center gap-3 flex-wrap">
       <button className="btn btn-ghost btn-sm" onClick={onMenu} aria-label="Toggle sidebar" title="Toggle sidebar">
@@ -63,6 +63,7 @@ const Header = ({ db, conn, onTest, onLoad, onNav, onMenu, sidebarCollapsed }) =
         </div>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
+        {window.UserChip && <window.UserChip user={currentUser} onClick={onUserClick} />}
         <button className="btn btn-ghost btn-sm" onClick={onTest}>
           <Icon name="link" size={15} /> ทดสอบเชื่อมต่อ
         </button>
@@ -162,6 +163,19 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useStickyState('mifs.sidebar-collapsed', false);
   const [isMobile, setIsMobile] = React.useState(() => window.matchMedia('(max-width: 900px)').matches);
   const [adminUnlocked, setAdminUnlocked] = React.useState(false);
+  const [currentUser, setCurrentUser] = React.useState(() => (window.loadCurrentUser ? window.loadCurrentUser() : null));
+  const [loginOpen, setLoginOpen] = React.useState(false);
+  const [loginMessage, setLoginMessage] = React.useState('');
+
+  const login = (u) => { setCurrentUser(u); window.saveCurrentUser && window.saveCurrentUser(u); setLoginOpen(false); setLoginMessage(''); };
+  const logout = () => { setCurrentUser(null); window.saveCurrentUser && window.saveCurrentUser(null); };
+  const requestLogin = (msg) => { setLoginMessage(msg || ''); setLoginOpen(true); };
+
+  // Expose globally so any page/dialog can prompt login + check the user.
+  React.useEffect(() => {
+    window.__currentUser = currentUser;
+    window.__requestLogin = requestLogin;
+  }, [currentUser]);
 
   React.useEffect(() => {
     const mq = window.matchMedia('(max-width: 900px)');
@@ -242,7 +256,7 @@ function App() {
   }, [route]);
 
   // ----- page render -----
-  const props = { db, setDb: setDbAndSave, nav: setRoute, conn };
+  const props = { db, setDb: setDbAndSave, nav: setRoute, conn, currentUser, requestLogin };
   let page = null;
   switch (route) {
     case 'dashboard':    page = <window.PageDashboard {...props} />; break;
@@ -265,7 +279,9 @@ function App() {
         <Header db={db} conn={conn}
                 onTest={() => testConn(false)} onLoad={loadFromCloud}
                 onNav={setRoute} onMenu={() => setSidebarCollapsed(!sidebarCollapsed)}
-                sidebarCollapsed={effectiveCollapsed} />
+                sidebarCollapsed={effectiveCollapsed}
+                currentUser={currentUser}
+                onUserClick={() => currentUser ? logout() : requestLogin('')} />
         <div className="mt-2 sm:mt-3 md:mt-4 main-layout" style={{ '--sidebar-w': sidebarWidth }}>
           <div className="sidebar-cell" style={{ minWidth: 0, transition: 'width 0.25s ease' }}>
             <Sidebar route={route} onNav={setRoute} mobileOpen={false} onCloseMobile={() => {}} collapsed={effectiveCollapsed} />
@@ -276,6 +292,14 @@ function App() {
         </div>
         <Footer />
       </div>
+      {loginOpen && window.LoginDialog && (
+        <window.LoginDialog
+          users={db.users || []}
+          message={loginMessage}
+          onClose={() => { setLoginOpen(false); setLoginMessage(''); }}
+          onLogin={login}
+        />
+      )}
     </DBContext.Provider>
   );
 }

@@ -147,9 +147,13 @@ const ApprovalTimeline = ({ request, light = false }) => {
 };
 
 // ---- Dialog: approve / reject a single role ----
-const ApprovalDialog = ({ request, onClose, onSubmit }) => {
-  const [roleKey, setRoleKey] = React.useState(APPROVAL_ROLES.find(r =>
-    (request.approvals?.[r.key]?.status || 'pending') === 'pending')?.key || APPROVAL_ROLES[0].key);
+const ApprovalDialog = ({ request, onClose, onSubmit, currentUser }) => {
+  // Restrict role choices to what the logged-in user can approve.
+  // Admin sees all, no-one logged in sees none → dialog will tell them to log in.
+  const allowed = window.allowedSteps ? window.allowedSteps(currentUser) : APPROVAL_ROLES.map(r => r.key);
+  const firstAllowed = APPROVAL_ROLES.find(r => allowed.includes(r.key) && (request.approvals?.[r.key]?.status || 'pending') === 'pending')
+                     || APPROVAL_ROLES.find(r => allowed.includes(r.key));
+  const [roleKey, setRoleKey] = React.useState(firstAllowed?.key || APPROVAL_ROLES[0].key);
 
   const existing = (request.approvals && request.approvals[roleKey]) || {};
   const [form, setForm] = React.useState(() => ({
@@ -162,17 +166,17 @@ const ApprovalDialog = ({ request, onClose, onSubmit }) => {
       : Array(10).fill(false),
   }));
 
-  // Re-sync form when role changes
+  // Re-sync form when role changes — auto-fill name from the logged-in user.
   React.useEffect(() => {
     const e = (request.approvals && request.approvals[roleKey]) || {};
     setForm({
-      name: e.name || '',
+      name: e.name || (currentUser ? currentUser.name : ''),
       date: e.date || today(),
       note: e.note || '',
       riskLevel: e.riskLevel || 'L',
       goldenRules: Array.isArray(e.goldenRules) && e.goldenRules.length === 10 ? [...e.goldenRules] : Array(10).fill(false),
     });
-  }, [roleKey, request.id]);
+  }, [roleKey, request.id, currentUser?.username]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -191,6 +195,31 @@ const ApprovalDialog = ({ request, onClose, onSubmit }) => {
 
   const role = APPROVAL_ROLES.find(r => r.key === roleKey);
 
+  // If the logged-in user has no allowed steps → show a notice instead of the form.
+  if (!currentUser || allowed.length === 0) {
+    return (
+      <Modal open={true} onClose={onClose} title={'อนุมัติงานซ่อม · ' + (request.id || '')}
+             footer={<button className="btn btn-ghost" onClick={onClose}>ปิด</button>}>
+        <div className="flex flex-col gap-3">
+          <div className="rounded-xl px-4 py-3" style={{
+            background: 'rgba(255,154,75,0.12)', border: '1px solid rgba(255,154,75,0.4)', color: '#ffd580',
+          }}>
+            {currentUser
+              ? <>บัญชี <b>{currentUser.name}</b> ({currentUser.role}) ไม่มีสิทธิ์อนุมัติใบงานนี้</>
+              : <>ต้องเข้าสู่ระบบเป็น ผจก./QA/Safety/COO ก่อนจึงอนุมัติได้</>}
+          </div>
+          {!currentUser && window.__requestLogin && (
+            <button className="btn btn-primary" onClick={() => { onClose(); window.__requestLogin('กรุณาเข้าสู่ระบบเพื่ออนุมัติ'); }}>
+              <Icon name="user" size={14} /> เข้าสู่ระบบ
+            </button>
+          )}
+        </div>
+      </Modal>
+    );
+  }
+
+  const isLockedRole = (key) => !allowed.includes(key);
+
   return (
     <Modal open={true} onClose={onClose}
            title={'อนุมัติงานซ่อม · ' + (request.id || '')}
@@ -206,20 +235,34 @@ const ApprovalDialog = ({ request, onClose, onSubmit }) => {
              </>
            }>
       <div className="flex flex-col gap-4">
+        <div className="rounded-xl px-3 py-2" style={{
+          background: 'rgba(52,227,165,0.10)', border: '1px solid rgba(52,227,165,0.30)',
+          fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <Icon name="user" size={14} />
+          <span>เข้าสู่ระบบในนาม <b>{currentUser.name}</b> · บทบาท {currentUser.role}</span>
+        </div>
         <div>
           <div style={{ fontSize: '0.78rem', color: 'var(--ink-faint)', fontWeight: 600, marginBottom: 6 }}>เลือกบทบาทที่อนุมัติ</div>
           <div className="flex gap-2 flex-wrap">
             {APPROVAL_ROLES.map(r => {
               const s = request.approvals?.[r.key]?.status || 'pending';
               const active = r.key === roleKey;
+              const locked = isLockedRole(r.key);
               return (
                 <button key={r.key} type="button"
-                        onClick={() => setRoleKey(r.key)}
+                        disabled={locked}
+                        onClick={() => !locked && setRoleKey(r.key)}
                         className="btn btn-sm"
-                        style={active ? { background: r.accent, color: '#fff', border: 'none' } : {}}>
+                        title={locked ? 'บัญชีของคุณไม่มีสิทธิ์ขั้นนี้' : ''}
+                        style={{
+                          ...(active ? { background: r.accent, color: '#fff', border: 'none' } : {}),
+                          ...(locked ? { opacity: 0.4, cursor: 'not-allowed' } : {}),
+                        }}>
                   {r.short}
                   {s === 'approved' && <span style={{ marginLeft: 4 }}>✓</span>}
                   {s === 'rejected' && <span style={{ marginLeft: 4 }}>✕</span>}
+                  {locked && <span style={{ marginLeft: 4 }}>🔒</span>}
                 </button>
               );
             })}
@@ -227,7 +270,7 @@ const ApprovalDialog = ({ request, onClose, onSubmit }) => {
         </div>
 
         <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-          <Field label={'ชื่อ ' + role.label} required>
+          <Field label={'ชื่อ ' + role.label} required hint="ใช้ชื่อจากบัญชีที่เข้าระบบ — แก้ได้ถ้าจำเป็น">
             <input className="input" value={form.name} onChange={e => set('name', e.target.value)} placeholder="ชื่อ-สกุล" />
           </Field>
           <Field label="วันที่อนุมัติ">

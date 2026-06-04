@@ -97,7 +97,7 @@
   const KEY = 'mifs.db.v1';
   // Bump when seed data (machines / sample repairs / sample PM) needs to roll out
   // to existing browsers. Migration preserves user-created records (non-seed IDs).
-  const SEED_VERSION = 4;
+  const SEED_VERSION = 5;
   // Previous default company values — migration only overwrites if the user hasn't
   // customised the name themselves (i.e. it still matches one of these).
   const LEGACY_COMPANIES = [
@@ -138,8 +138,12 @@
       pmPlans: seedPm(machines),
       pmRecords: [],
       users: [
-        { username: 'admin', password: '1234', name: 'Administrator', role: 'Admin' },
-        { username: 'maint', password: '1234', name: 'ช่างซ่อมบำรุง', role: 'Maintenance' },
+        { username: 'admin',   password: '1234', name: 'Administrator',    role: 'Admin' },
+        { username: 'maint',   password: '1234', name: 'ช่างซ่อมบำรุง',   role: 'Maintenance' },
+        { username: 'manager', password: '1234', name: 'ผู้จัดการแผนก',    role: 'DeptManager' },
+        { username: 'qa',      password: '1234', name: 'QA Officer',        role: 'QA' },
+        { username: 'safety',  password: '1234', name: 'Safety Officer',    role: 'Safety' },
+        { username: 'coo',     password: '1234', name: 'COO',               role: 'COO' },
       ],
       technicians: [
         { id: 't1', name: 'นายณรงค์ศักดิ์',   phone: '081-111-1111', skills: ['ไฟฟ้า', 'PLC'],            areas: ['PRP', 'PRC'] },
@@ -274,6 +278,13 @@
     const matchesLegacy = LEGACY_TECHNICIAN_SETS.some(set =>
       set.length === techNames.length && set.every((n, i) => n === techNames[i]));
     if (matchesLegacy) db.technicians = fresh.technicians;
+    // Top-up users: keep custom accounts the admin added; backfill the four
+    // approver roles + maint if they're missing.
+    const usernames = new Set((db.users || []).map(u => u.username));
+    db.users = [...(db.users || [])];
+    for (const u of fresh.users) {
+      if (!usernames.has(u.username)) db.users.push(u);
+    }
     return db;
   }
 
