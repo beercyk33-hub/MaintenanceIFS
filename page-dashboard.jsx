@@ -91,6 +91,9 @@ function PageDashboard({ db, setDb, nav }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Live IoT sensor strip */}
+      {window.IoTStrip && <window.IoTStrip onOpen={() => nav && nav('iot')} />}
+
       {/* KPI row */}
       <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         <div onClick={() => setDetailView('machines')} style={{ cursor: 'pointer' }}>
