@@ -1,0 +1,8 @@
+{
+  "name": "maintenance-ifs",
+  "private": true,
+  "description": "Maintenance IFS — static site with Netlify Functions for MQTT proxy.",
+  "dependencies": {
+    "mqtt": "^5.10.1"
+  }
+}
