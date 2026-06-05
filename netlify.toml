@@ -1,17 +1,12 @@
-# Static site — Netlify also installs the MQTT proxy function's deps.
+# Static site — no build step. The MQTT proxy function uses Node's native
+# WebSocket so it has zero npm dependencies.
 [build]
   publish = "."
-  command = "npm install"
+  command = ""
   functions = "netlify/functions"
 
-# The mqtt package pulls in `ws` (native addons) — let Netlify ship it as
-# external node_modules instead of trying to bundle it with esbuild.
-[functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["mqtt"]
-
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
 
 # SPA-style fallback: any unknown path returns the dashboard (index.html).
 # Functions matched first via the explicit /api/* rewrite below.
