@@ -1,7 +1,7 @@
 # Static site — Netlify also installs the MQTT proxy function's deps.
 [build]
   publish = "."
-  command = "cd netlify/functions && npm install"
+  command = "npm install"
   functions = "netlify/functions"
 
 # The mqtt package pulls in `ws` (native addons) — let Netlify ship it as
