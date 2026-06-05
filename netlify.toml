@@ -1,7 +1,7 @@
-# Static site — no build step needed. Netlify just serves the repo root.
+# Static site — Netlify also installs the MQTT proxy function's deps.
 [build]
   publish = "."
-  command = ""
+  command = "cd netlify/functions && npm install"
   functions = "netlify/functions"
 
 # SPA-style fallback: any unknown path returns the dashboard (index.html).
