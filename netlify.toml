@@ -2,9 +2,15 @@
 [build]
   publish = "."
   command = ""
+  functions = "netlify/functions"
 
 # SPA-style fallback: any unknown path returns the dashboard (index.html).
-# Harmless for this app today; useful if real routing is added later.
+# Functions matched first via the explicit /api/* rewrite below.
+[[redirects]]
+  from = "/api/iot-values"
+  to = "/.netlify/functions/iot-values"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

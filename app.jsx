@@ -25,6 +25,7 @@ const NAV = [
   { key: 'pm',           label: 'บำรุงรักษา (PM)',   icon: 'calendar'  },
   { key: 'history',      label: 'ประวัติเครื่องจักร', icon: 'history'   },
   { key: 'reports',      label: 'รายงาน & สถิติ',     icon: 'chart'     },
+  { key: 'iot',          label: 'เซ็นเซอร์ IoT',       icon: 'bolt'      },
   { key: 'admin',        label: 'ส่วนผู้ดูแลระบบ',    icon: 'shield'    },
 ];
 
@@ -267,6 +268,7 @@ function App() {
     case 'pm':           page = <window.PagePM {...props} />; break;
     case 'history':      page = <window.PageMachineHistory {...props} />; break;
     case 'reports':      page = <window.PageReports {...props} />; break;
+    case 'iot':          page = <window.PageIoT {...props} />; break;
     case 'admin':        page = adminUnlocked ? <window.PageAdmin {...props} /> : null; break;
     default: page = <window.PageDashboard {...props} />;
   }
