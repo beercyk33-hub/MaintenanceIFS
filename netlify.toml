@@ -10,6 +10,9 @@
   node_bundler = "esbuild"
   external_node_modules = ["mqtt"]
 
+[build.environment]
+  NODE_VERSION = "20"
+
 # SPA-style fallback: any unknown path returns the dashboard (index.html).
 # Functions matched first via the explicit /api/* rewrite below.
 [[redirects]]

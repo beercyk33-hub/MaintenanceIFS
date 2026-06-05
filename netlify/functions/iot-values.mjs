@@ -5,11 +5,6 @@
 //
 // Frontend usage:
 //   POST /api/iot-values   body: { topics: ["PLC_CENTER/.../PLC/0", ...] }
-//
-// Tweak WAIT_MS to trade freshness vs. response time. Topics that don't deliver
-// a message within the window are simply omitted from the response.
-
-import mqtt from 'mqtt';
 
 const BROKER_URL = 'ws://conn.thaiiiot.com:9001/mqtt';
 const USERNAME = 'iiotkub';
@@ -21,23 +16,42 @@ const JSON_HEADERS = {
   'Cache-Control': 'no-store',
 };
 
+function jsonResponse(obj, status = 200) {
+  return new Response(JSON.stringify(obj), { status, headers: JSON_HEADERS });
+}
+
 export default async (req) => {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ ok: false, error: 'POST only' }), { status: 405, headers: JSON_HEADERS });
+    return jsonResponse({ ok: false, error: 'POST only' }, 405);
   }
+
   let body;
   try { body = await req.json(); }
-  catch { return new Response(JSON.stringify({ ok: false, error: 'invalid json' }), { status: 400, headers: JSON_HEADERS }); }
+  catch (e) { return jsonResponse({ ok: false, error: 'invalid json: ' + e.message }, 400); }
 
   const topics = Array.isArray(body?.topics) ? body.topics.filter(t => typeof t === 'string' && t) : [];
   if (topics.length === 0) {
-    return new Response(JSON.stringify({ ok: true, values: {} }), { headers: JSON_HEADERS });
+    return jsonResponse({ ok: true, values: {} });
   }
 
-  return await collect(topics);
+  // Dynamic import so any module-load error is captured as a normal response
+  // instead of crashing the Lambda before it can reply.
+  let mqtt;
+  try {
+    const mod = await import('mqtt');
+    mqtt = mod.default || mod;
+  } catch (e) {
+    return jsonResponse({ ok: false, stage: 'import', error: String(e?.message || e), stack: String(e?.stack || '').slice(0, 800) });
+  }
+
+  try {
+    return await collect(mqtt, topics);
+  } catch (e) {
+    return jsonResponse({ ok: false, stage: 'collect', error: String(e?.message || e), stack: String(e?.stack || '').slice(0, 800) });
+  }
 };
 
-function collect(topics) {
+function collect(mqtt, topics) {
   return new Promise((resolve) => {
     const values = {};
     const want = new Set(topics);
@@ -50,9 +64,9 @@ function collect(topics) {
       done = true;
       clearTimeout(timer);
       try { client && client.end(true); } catch {}
-      const body = { ok: !err, values };
-      if (err) body.error = String(err.message || err);
-      resolve(new Response(JSON.stringify(body), { headers: JSON_HEADERS }));
+      const out = { ok: !err, values };
+      if (err) out.error = String(err.message || err);
+      resolve(jsonResponse(out));
     };
 
     try {
@@ -72,9 +86,7 @@ function collect(topics) {
     timer = setTimeout(() => finish(null), WAIT_MS);
 
     client.on('connect', () => {
-      topics.forEach(t => {
-        client.subscribe(t, { qos: 0 }, () => {});
-      });
+      topics.forEach(t => client.subscribe(t, { qos: 0 }, () => {}));
     });
     client.on('message', (topic, payload) => {
       if (!want.has(topic)) return;
