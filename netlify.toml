@@ -4,6 +4,12 @@
   command = "cd netlify/functions && npm install"
   functions = "netlify/functions"
 
+# The mqtt package pulls in `ws` (native addons) — let Netlify ship it as
+# external node_modules instead of trying to bundle it with esbuild.
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["mqtt"]
+
 # SPA-style fallback: any unknown path returns the dashboard (index.html).
 # Functions matched first via the explicit /api/* rewrite below.
 [[redirects]]
