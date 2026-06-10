@@ -335,7 +335,7 @@ const PhotoUploader = ({ value = [], onChange, max = 6, label = 'แนบรู
           {value.map(p => (
             <div key={p.id} className="relative group rounded-xl overflow-hidden"
                  style={{ width: 96, height: 96, border: '1px solid var(--line-strong)' }}>
-              <img src={p.url || p.dataUrl} alt={p.name}
+              <img src={photoSrc(p)} alt={p.name}
                    style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }}
                    onClick={() => setPreview(p)} />
               <button type="button"
@@ -378,7 +378,7 @@ const PhotoUploader = ({ value = [], onChange, max = 6, label = 'แนบรู
         <div className="modal-backdrop" onClick={() => setPreview(null)}
              style={{ zIndex: 200 }}>
           <div style={{ maxWidth: '90vw', maxHeight: '90vh', position: 'relative' }}>
-            <img src={preview.url || preview.dataUrl} alt={preview.name}
+            <img src={photoSrc(preview)} alt={preview.name}
                  style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 12, boxShadow: '0 30px 80px rgba(0,0,0,0.6)' }} />
             <button onClick={() => setPreview(null)}
                     className="btn btn-ghost btn-sm absolute"
@@ -392,6 +392,16 @@ const PhotoUploader = ({ value = [], onChange, max = 6, label = 'แนบรู
   );
 };
 
+// Normalize legacy Drive URLs (drive.google.com/uc?...id=XXX, /file/d/XXX/...,
+// /open?id=XXX) to the lh3.googleusercontent.com form that embeds reliably in <img>.
+const driveIdRe = /(?:drive\.google\.com\/(?:uc\?(?:[^#]*&)?id=|open\?(?:[^#]*&)?id=|file\/d\/|thumbnail\?(?:[^#]*&)?id=))([a-zA-Z0-9_-]+)/;
+const normalizeImgSrc = (src) => {
+  if (!src || typeof src !== 'string') return src;
+  const m = src.match(driveIdRe);
+  return m ? 'https://lh3.googleusercontent.com/d/' + m[1] + '=w2000' : src;
+};
+const photoSrc = (p) => normalizeImgSrc(p.url) || p.dataUrl;
+
 // ---------- PhotoGallery (read-only) ----------
 const PhotoGallery = ({ photos = [], thumb = 80 }) => {
   const [preview, setPreview] = React.useState(null);
@@ -403,7 +413,7 @@ const PhotoGallery = ({ photos = [], thumb = 80 }) => {
           <div key={p.id || p.url || p.dataUrl} className="rounded-xl overflow-hidden"
                style={{ width: thumb, height: thumb, border: '1px solid var(--line-strong)', cursor: 'zoom-in' }}
                onClick={() => setPreview(p)}>
-            <img src={p.url || p.dataUrl} alt={p.name || 'attachment'}
+            <img src={photoSrc(p)} alt={p.name || 'attachment'}
                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
         ))}
@@ -411,7 +421,7 @@ const PhotoGallery = ({ photos = [], thumb = 80 }) => {
       {preview && (
         <div className="modal-backdrop" onClick={() => setPreview(null)} style={{ zIndex: 200 }}>
           <div style={{ maxWidth: '90vw', maxHeight: '90vh', position: 'relative' }}>
-            <img src={preview.url || preview.dataUrl} alt={preview.name || ''}
+            <img src={photoSrc(preview)} alt={preview.name || ''}
                  style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 12, boxShadow: '0 30px 80px rgba(0,0,0,0.6)' }} />
             <button onClick={() => setPreview(null)}
                     className="btn btn-ghost btn-sm absolute"
@@ -431,5 +441,5 @@ Object.assign(window, {
   toast, confirmDialog, SearchInput, Empty,
   today, nowTime, fmtDate, daysBetween,
   STATUS_COLORS, URGENCY_COLORS, AREAS,
-  PhotoUploader, PhotoGallery, fileToResizedDataUrl,
+  PhotoUploader, PhotoGallery, fileToResizedDataUrl, photoSrc, normalizeImgSrc,
 });
