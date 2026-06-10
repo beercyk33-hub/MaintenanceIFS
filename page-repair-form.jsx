@@ -134,7 +134,7 @@ function RepairFormSheet({ request, history, onClose }) {
           border: '1px solid #e0e4eb', borderRadius: 6, overflow: 'hidden',
           height: 120, background: '#fafafa', position: 'relative',
         }}>
-          <img src={p.url || p.dataUrl} alt={p.name} crossOrigin="anonymous"
+          <img src={(window.photoSrc ? window.photoSrc(p) : (p.url || p.dataUrl))} alt={p.name} crossOrigin="anonymous"
                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
       ))}
