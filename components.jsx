@@ -335,7 +335,7 @@ const PhotoUploader = ({ value = [], onChange, max = 6, label = 'แนบรู
           {value.map(p => (
             <div key={p.id} className="relative group rounded-xl overflow-hidden"
                  style={{ width: 96, height: 96, border: '1px solid var(--line-strong)' }}>
-              <img src={photoSrc(p)} alt={p.name}
+              <img src={photoSrc(p)} alt={p.name} onError={onImgError(p)}
                    style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }}
                    onClick={() => setPreview(p)} />
               <button type="button"
@@ -378,7 +378,7 @@ const PhotoUploader = ({ value = [], onChange, max = 6, label = 'แนบรู
         <div className="modal-backdrop" onClick={() => setPreview(null)}
              style={{ zIndex: 200 }}>
           <div style={{ maxWidth: '90vw', maxHeight: '90vh', position: 'relative' }}>
-            <img src={photoSrc(preview)} alt={preview.name}
+            <img src={photoSrc(preview)} alt={preview.name} onError={onImgError(preview)}
                  style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 12, boxShadow: '0 30px 80px rgba(0,0,0,0.6)' }} />
             <button onClick={() => setPreview(null)}
                     className="btn btn-ghost btn-sm absolute"
@@ -392,15 +392,42 @@ const PhotoUploader = ({ value = [], onChange, max = 6, label = 'แนบรู
   );
 };
 
-// Normalize legacy Drive URLs (drive.google.com/uc?...id=XXX, /file/d/XXX/...,
-// /open?id=XXX) to the lh3.googleusercontent.com form that embeds reliably in <img>.
-const driveIdRe = /(?:drive\.google\.com\/(?:uc\?(?:[^#]*&)?id=|open\?(?:[^#]*&)?id=|file\/d\/|thumbnail\?(?:[^#]*&)?id=))([a-zA-Z0-9_-]+)/;
-const normalizeImgSrc = (src) => {
-  if (!src || typeof src !== 'string') return src;
+// Extract a Drive file id from any of the legacy URL formats Google has used.
+const driveIdRe = /(?:drive\.google\.com\/(?:uc\?(?:[^#]*&)?id=|open\?(?:[^#]*&)?id=|file\/d\/|thumbnail\?(?:[^#]*&)?id=)|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)/;
+const extractDriveId = (src) => {
+  if (!src || typeof src !== 'string') return null;
   const m = src.match(driveIdRe);
-  return m ? 'https://lh3.googleusercontent.com/d/' + m[1] + '=w2000' : src;
+  return m ? m[1] : null;
+};
+// Primary URL (thumbnail endpoint — most reliable for ANYONE_WITH_LINK files).
+const normalizeImgSrc = (src) => {
+  const id = extractDriveId(src);
+  return id ? 'https://drive.google.com/thumbnail?id=' + id + '&sz=w2000' : src;
 };
 const photoSrc = (p) => normalizeImgSrc(p.url) || p.dataUrl;
+// Fallback chain attempted in order when an <img> errors out.
+const photoFallbacks = (p) => {
+  const id = extractDriveId(p.url);
+  const list = [];
+  if (id) {
+    list.push('https://lh3.googleusercontent.com/d/' + id + '=w2000');
+    list.push('https://lh3.googleusercontent.com/d/' + id);
+    list.push('https://drive.google.com/uc?export=view&id=' + id);
+  }
+  if (p.dataUrl) list.push(p.dataUrl);
+  return list;
+};
+// onError handler: walk through fallback URLs before giving up.
+const onImgError = (p) => (e) => {
+  const img = e.currentTarget;
+  const tried = img.dataset.tried ? img.dataset.tried.split('|') : [];
+  tried.push(img.src);
+  const next = photoFallbacks(p).find(u => !tried.includes(u));
+  if (next) {
+    img.dataset.tried = tried.join('|');
+    img.src = next;
+  }
+};
 
 // ---------- PhotoGallery (read-only) ----------
 const PhotoGallery = ({ photos = [], thumb = 80 }) => {
@@ -413,7 +440,7 @@ const PhotoGallery = ({ photos = [], thumb = 80 }) => {
           <div key={p.id || p.url || p.dataUrl} className="rounded-xl overflow-hidden"
                style={{ width: thumb, height: thumb, border: '1px solid var(--line-strong)', cursor: 'zoom-in' }}
                onClick={() => setPreview(p)}>
-            <img src={photoSrc(p)} alt={p.name || 'attachment'}
+            <img src={photoSrc(p)} alt={p.name || 'attachment'} onError={onImgError(p)}
                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
         ))}
@@ -421,7 +448,7 @@ const PhotoGallery = ({ photos = [], thumb = 80 }) => {
       {preview && (
         <div className="modal-backdrop" onClick={() => setPreview(null)} style={{ zIndex: 200 }}>
           <div style={{ maxWidth: '90vw', maxHeight: '90vh', position: 'relative' }}>
-            <img src={photoSrc(preview)} alt={preview.name || ''}
+            <img src={photoSrc(preview)} alt={preview.name || ''} onError={onImgError(preview)}
                  style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 12, boxShadow: '0 30px 80px rgba(0,0,0,0.6)' }} />
             <button onClick={() => setPreview(null)}
                     className="btn btn-ghost btn-sm absolute"

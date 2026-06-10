@@ -614,7 +614,7 @@ function uploadImage(payload) {
   const folder = ensureFolder(subfolder);
   const file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  return { ok:true, url: 'https://lh3.googleusercontent.com/d/' + file.getId() + '=w2000', id: file.getId() };
+  return { ok:true, url: 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w2000', id: file.getId() };
 }
 
 // Ensures /MaintenanceIFS/<subfolder>/ exists; returns the leaf folder.
